@@ -8,21 +8,23 @@ GameHelper is a Windows x64 .NET overlay for **Path of Exile 2** with a plugin a
 
 | Channel | For whom | Link |
 |---------|----------|------|
-| **`main` branch** | Developers, auditors, no-auto-update users | https://github.com/MordWraith/Gamehelper |
-| **Releases** | Players (installer / ZIP) | https://github.com/MordWraith/Gamehelper/releases |
+| **`main` branch** | Developers, auditors, no-auto-update users | https://github.com/MordWraith/Gamehelper-Experimental |
+| **Releases** | Players (installer / ZIP) | https://github.com/MordWraith/Gamehelper-Experimental/releases |
 | **Auto-update** | Optional convenience (signed ZIP from Releases) | Built into `GameHelper.exe` |
+| **Stable channel** | Normal players | https://github.com/MordWraith/Gamehelper |
 
-- **Do not want auto-update?** Use the [full ZIP](https://github.com/MordWraith/Gamehelper/releases/latest) or [build from source](#build-from-source).
+- **Do not want auto-update?** Use the [core or full ZIP](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) or [build from source](#build-from-source).
 - **Trust / security:** [SECURITY.md](SECURITY.md) — signed manifests, what gets updated, what stays local.
+- **Windows Defender blocked GameHelper?** See [SECURITY.md → false positives](SECURITY.md#windows-defender-and-antivirus-false-positives) — common with auto-update, plugin downloads, and unsigned DLLs.
 - **Attribution:** [CREDITS.md](CREDITS.md) and in-app **Plugins → Author** column.
 
 ## Download (players)
 
 | What | Link |
 |------|------|
-| **Installer (recommended)** | https://github.com/MordWraith/Gamehelper/releases/latest/download/GameHelperDownloader.exe |
-| Full ZIP (manual install) | https://github.com/MordWraith/Gamehelper/releases/latest/download/GameHelper-*-full.zip |
-| All releases | https://github.com/MordWraith/Gamehelper/releases/latest |
+| **Installer (recommended)** | https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe |
+| Core / full ZIP (manual install) | https://github.com/MordWraith/Gamehelper-Experimental/releases/latest |
+| All releases | https://github.com/MordWraith/Gamehelper-Experimental/releases/latest |
 
 Run `GameHelperDownloader.exe` in an **empty folder**. Requires [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
 
@@ -45,8 +47,8 @@ User settings (`configs/`, `Plugins/*/config/`) are **not** included in update p
 - [.NET 10 SDK for Windows x64](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 ```powershell
-git clone https://github.com/MordWraith/Gamehelper.git
-cd Gamehelper
+git clone https://github.com/MordWraith/Gamehelper-Experimental.git
+cd Gamehelper-Experimental
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 ```
 
@@ -110,6 +112,8 @@ Plugins\<Name>\config\
 **Update pulled wrong version** — Install into an **empty** folder; check `VERSION.txt`.
 
 **Overlay does not attach** — Match admin elevation with the game.
+
+**Windows Defender / helper won't start** — Open Protection history, allow blocked `GameHelper` / `GameHelperUpdate` entries, or install from the [core/full ZIP](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) into a new folder. Details: [SECURITY.md](SECURITY.md#windows-defender-and-antivirus-false-positives).
 
 ## Links
 
