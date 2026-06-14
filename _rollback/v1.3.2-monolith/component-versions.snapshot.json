@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "label": "v1.3.2-monolith",
+  "created": "2026-06-09",
+  "description": "Snapshot before component-based versioning (core/plugins at 1.0.0). Restore via scripts/restore-rollback-1.3.2-monolith.ps1 or git tag v1.3.2-monolith.",
+  "versionScheme": 1,
+  "monolithVersion": "1.3.2",
+  "components": {
+    "core": "1.3.2",
+    "launcher": "1.3.2",
+    "downloader": "1.0.0",
+    "gameOffsets": "1.3.2"
+  },
+  "plugins": {
+    "note": "Plugin assemblies had no explicit Version in .csproj before component versioning."
+  }
+}

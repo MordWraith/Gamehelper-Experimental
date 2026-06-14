@@ -1,0 +1,13 @@
+Kanal: EXPERIMENTAL (Quellprojekt)
+
+Quellcode:  D:\ZusatzProgramme\Gamehelper-Experimental-Src  (DIESER Ordner)
+Lokaler Build / Spielen: publish\  (wie Stabil: rebuild -> publish\)
+GitHub:       MordWraith/Gamehelper-Experimental
+
+Stabiler Quellcode (getrennt):
+  D:\ZusatzProgramme\Gamehelper  ->  publish\  fuer Stabil
+
+Build + Test:     rebuild-experimental.bat
+GitHub Release:   rebuild-and-publish-experimental.bat
+
+Der fruehere Ordner "Gamehelper Experimental" ist obsolet (Deploy liegt jetzt in publish\).

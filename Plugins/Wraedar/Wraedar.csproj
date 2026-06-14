@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>1701;1702;1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="wraedar-upstream\**" />
+    <Compile Remove="DieselExileTools\**" />
+    <Content Remove="wraedar-upstream\**" />
+    <Content Remove="DieselExileTools\**" />
+    <None Remove="wraedar-upstream\**" />
+    <EmbeddedResource Remove="wraedar-upstream\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\GameHelper\GameHelper.csproj">
+      <Private>false</Private>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+    </ProjectReference>
+    <ProjectReference Include="DieselExileTools\DieselExileTools.csproj">
+      <Private>false</Private>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="PinFiles\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Media\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="CopyFiles" AfterTargets="Build">
+    <PropertyGroup>
+      <DeployDir>..\..\GameHelper\bin\$(Configuration)\$(TargetFramework)\win-x64\Plugins\$(ProjectName)</DeployDir>
+      <DxtDll>$(MSBuildProjectDirectory)\DieselExileTools\bin\$(Configuration)\$(TargetFramework)\win-x64\DieselExileTools.dll</DxtDll>
+      <DxtPdb>$(MSBuildProjectDirectory)\DieselExileTools\bin\$(Configuration)\$(TargetFramework)\win-x64\DieselExileTools.pdb</DxtPdb>
+    </PropertyGroup>
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb;$(DxtDll);$(DxtPdb)" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <DeployPinFiles Include="$(OutDir)PinFiles\**\*" />
+      <DeployMedia Include="$(OutDir)Media\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeployPinFiles)" DestinationFolder="$(DeployDir)\PinFiles\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'@(DeployPinFiles)' != ''" />
+    <Copy SourceFiles="@(DeployMedia)" DestinationFolder="$(DeployDir)\Media\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'@(DeployMedia)' != ''" />
+  </Target>
+
+</Project>

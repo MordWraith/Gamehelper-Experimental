@@ -1,0 +1,1 @@
+﻿[Radar] Hide paths when destination reached; updated default map alignment (Gordin) || [Radar] Erreichte Pfade ausblenden; neue Standard-Kartenausrichtung (Gordin)
