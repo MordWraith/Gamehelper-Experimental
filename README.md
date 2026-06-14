@@ -1,13 +1,13 @@
 # GameHelper Experimental
 
-**Early-access / test builds** of [GameHelper](https://github.com/MordWraith/Gamehelper) for Path of Exile 2.
+**Early-access / test builds** of [GameHelper](https://github.com/MordWraith/Gamehelper-Experimental) for Path of Exile 2.
 
 This is **not** the stable release. Use it only if you want to test the component-based Core + in-app plugin system before it ships to everyone. Bugs and breaking changes are expected.
 
 | | **Stable** | **Experimental (this repo)** |
 |---|------------|------------------------------|
 | **For** | Normal players | Testers, early feedback |
-| **GitHub** | [MordWraith/Gamehelper](https://github.com/MordWraith/Gamehelper) | **MordWraith/Gamehelper-Experimental** |
+| **GitHub** | [MordWraith/Gamehelper](https://github.com/MordWraith/Gamehelper-Experimental) | **MordWraith/Gamehelper-Experimental** |
 | **Installer** | `GameHelperDownloader.exe` | **`GameHelperDownloader-Experimental.exe`** |
 | **First install** | Full package (all bundled plugins) | **Core package only** (4 core plugins) |
 | **Optional plugins** | Included in download | **Download on demand** from GitHub (in-app catalog) |
@@ -63,7 +63,7 @@ You can keep stable and experimental side by side in **separate folders**.
 ## Report issues
 
 Experimental feedback: contact the maintainer or your test group (Discord, etc.).  
-For stable bugs, use the main [Gamehelper](https://github.com/MordWraith/Gamehelper) repo.
+For stable bugs, use the main [Gamehelper](https://github.com/MordWraith/Gamehelper-Experimental) repo.
 
 ---
 
@@ -73,7 +73,7 @@ For stable bugs, use the main [Gamehelper](https://github.com/MordWraith/Gamehel
 
 | | **Stabil** | **Experimental** |
 |---|------------|------------------|
-| Repo | [Gamehelper](https://github.com/MordWraith/Gamehelper) | **Dieses Repo** |
+| Repo | [Gamehelper](https://github.com/MordWraith/Gamehelper-Experimental) | **Dieses Repo** |
 | Installer | `GameHelperDownloader.exe` | **`GameHelperDownloader-Experimental.exe`** |
 | Erstinstallation | Alles in einem Paket | **Nur Core** (4 Plugins) |
 | Optionale Plugins | Im Download enthalten | **In der App herunterladen** (Plugin-Katalog) |
