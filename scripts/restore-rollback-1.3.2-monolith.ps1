@@ -24,6 +24,14 @@ if (Test-Path $gitDir) {
             git checkout v1.3.2-monolith -- .
         }
 
+        $versionsFile = Join-Path $Root "versions.json"
+        if (Test-Path $versionsFile) {
+            Remove-Item $versionsFile -Force
+            Write-Host "Entfernt versions.json (Monolith-Modus)." -ForegroundColor DarkGray
+        }
+
+        Restore-MonolithVersionsFromSnapshot -Root $Root
+
         Pop-Location
         if (-not $SkipRebuild) {
             Write-Host "Starte rebuild-experimental.ps1 ..." -ForegroundColor DarkGray
