@@ -1,14 +1,14 @@
 # GameHelper Experimental
 
-**Early-access / test builds** of [GameHelper](https://github.com/MordWraith/Gamehelper-Experimental) for Path of Exile 2.
+**Early-access / test builds** of [GameHelper](https://github.com/MordWraith/Gamehelper) for Path of Exile 2.
 
 This is **not** the stable release. Use it only if you want to test the component-based Core + in-app plugin system before it ships to everyone. Bugs and breaking changes are expected.
 
 | | **Stable** | **Experimental (this repo)** |
 |---|------------|------------------------------|
 | **For** | Normal players | Testers, early feedback |
-| **GitHub** | [MordWraith/Gamehelper](https://github.com/MordWraith/Gamehelper-Experimental) | **MordWraith/Gamehelper-Experimental** |
-| **Installer** | `GameHelperDownloader.exe` | **`GameHelperDownloader-Experimental.exe`** |
+| **GitHub** | [MordWraith/Gamehelper](https://github.com/MordWraith/Gamehelper) | [MordWraith/Gamehelper-Experimental](https://github.com/MordWraith/Gamehelper-Experimental) |
+| **Installer** | [GameHelperDownloader.exe](https://github.com/MordWraith/Gamehelper/releases/latest/download/GameHelperDownloader.exe) | [GameHelperDownloader-Experimental.exe](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe) |
 | **First install** | Full package (all bundled plugins) | **Core package only** (4 core plugins) |
 | **Optional plugins** | Included in download | **Download on demand** from GitHub (in-app catalog) |
 | **Auto-update** | Stable releases only | Experimental releases only |
@@ -23,17 +23,18 @@ Requires [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/
 
 | What | Link |
 |------|------|
-| **Installer (recommended)** | https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe |
-| **Core ZIP** | `GameHelper-*-core.zip` on [Releases](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) |
-| **Full ZIP (all plugins)** | `GameHelper-*-full.zip` — or use installer with `--full` |
-| **Plugin catalog** | `plugins-catalog.json` (+ signature) on Releases |
+| **Installer (recommended)** | [GameHelperDownloader-Experimental.exe](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe) |
+| **Core ZIP** | [GameHelper-*-core.zip](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) on [Releases](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) |
+| **Full ZIP (all plugins)** | [GameHelper-*-full.zip](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) — or installer with `--full` |
+| **Plugin catalog** | [plugins-catalog.json](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) (+ signature) on [Releases](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) |
+| **All releases** | [Releases](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) |
 
 ### Install (default = Core only)
 
 1. Create an **empty folder** (do not install over stable GameHelper in the same folder).
-2. Run **`GameHelperDownloader-Experimental.exe`** in that folder.
-   - Downloads **`GameHelper-*-core.zip`**: launcher, overlay, and **4 core plugins** (AutoPot, HealthBars, Radar, PreloadAlert).
-   - Also downloads **`plugins-catalog.json`** (signed list of optional plugins).
+2. Run **[GameHelperDownloader-Experimental.exe](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe)** in that folder.
+   - Downloads **core ZIP**: launcher, overlay, and **4 core plugins** (AutoPot, HealthBars, Radar, PreloadAlert).
+   - Also downloads **plugins-catalog.json** (signed list of optional plugins).
 3. Start **`GameHelper.exe`**.
 
 Optional plugins (Atlas, RitualHelper, Wraedar, …) are **not** included in the default install.
@@ -44,7 +45,7 @@ Optional plugins (Atlas, RitualHelper, Wraedar, …) are **not** included in the
 2. Click **Download** on the plugins you want.
 3. Enable them under **Plugins → Installed plugins**.
 
-Plugins are fetched as signed ZIPs from this repo’s GitHub Releases (`GameHelper-Plugin-<Name>-<Version>.zip`).
+Plugins are fetched as signed ZIPs from this repo’s [GitHub Releases](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest) (`GameHelper-Plugin-<Name>-<Version>.zip`).
 
 ### CLI (optional)
 
@@ -63,7 +64,7 @@ You can keep stable and experimental side by side in **separate folders**.
 ## Report issues
 
 Experimental feedback: contact the maintainer or your test group (Discord, etc.).  
-For stable bugs, use the main [Gamehelper](https://github.com/MordWraith/Gamehelper-Experimental) repo.
+For stable bugs, use the main [Gamehelper](https://github.com/MordWraith/Gamehelper) repo.
 
 ---
 
@@ -73,12 +74,12 @@ For stable bugs, use the main [Gamehelper](https://github.com/MordWraith/Gamehel
 
 | | **Stabil** | **Experimental** |
 |---|------------|------------------|
-| Repo | [Gamehelper](https://github.com/MordWraith/Gamehelper-Experimental) | **Dieses Repo** |
-| Installer | `GameHelperDownloader.exe` | **`GameHelperDownloader-Experimental.exe`** |
+| Repo | [Gamehelper](https://github.com/MordWraith/Gamehelper) | [Gamehelper-Experimental](https://github.com/MordWraith/Gamehelper-Experimental) |
+| Installer | [GameHelperDownloader.exe](https://github.com/MordWraith/Gamehelper/releases/latest/download/GameHelperDownloader.exe) | [GameHelperDownloader-Experimental.exe](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe) |
 | Erstinstallation | Alles in einem Paket | **Nur Core** (4 Plugins) |
 | Optionale Plugins | Im Download enthalten | **In der App herunterladen** (Plugin-Katalog) |
 
-**Download:** https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe  
+**Download:** [GameHelperDownloader-Experimental.exe](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest/download/GameHelperDownloader-Experimental.exe)
 
 In einen **leeren Ordner** installieren. Standard = Core-Paket. Optionale Plugins unter **Plugins → Plugin-Katalog → Herunterladen**.  
-Vollstaendiges Paket: `--full` am Downloader oder `GameHelper-*-full.zip` von Releases.
+Vollstaendiges Paket: `--full` am Downloader oder [Full-ZIP auf Releases](https://github.com/MordWraith/Gamehelper-Experimental/releases/latest).
