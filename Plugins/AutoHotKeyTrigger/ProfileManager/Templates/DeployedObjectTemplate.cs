@@ -15,7 +15,6 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
     public static class DeployedObjectTemplate
     {
         private static int objectType;
-        private static string[] object_types;
 
         private static string selectedOperator;
         private static readonly List<string> SupportedOperatorTypes;
@@ -25,6 +24,7 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         static DeployedObjectTemplate()
         {
             count = 0;
+            objectType = 0;
 
             selectedOperator = ">";
             SupportedOperatorTypes = new()
@@ -34,13 +34,6 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
                 "<",
                 "<="
             };
-
-            objectType = 0;
-            object_types = new string[256];
-            for (var i = 0; i < object_types.Length; i++)
-            {
-                object_types[i] = $"{i}";
-            }
         }
 
         /// <summary>
@@ -53,15 +46,25 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
         {
             ImGui.Text("Player has deployed the object of type");
             ImGui.SameLine();
-            ImGui.PushItemWidth(ImGui.GetFontSize() * 4);
-            ImGui.Combo("##DeployedObjectType", ref objectType, object_types, object_types.Length);
+            ImGui.PushItemWidth(ImGui.GetFontSize() * 6);
+            ImGui.InputInt("##DeployedObjectType", ref objectType);
+            if (objectType < 0)
+            {
+                objectType = 0;
+            }
+
             ImGuiHelper.ToolTip("Open Core -> DV -> States -> InGameStateObject -> " +
                 "CurrentAreaInstance -> Player -> Components -> Actor -> Deployed Objects to figure " +
-                "out what value to put here.");
+                "out what value to put here. PoE2 uses large type ids (e.g. 22938), not 0-255.");
             ImGui.SameLine();
             ImGuiHelper.IEnumerableComboBox("##DeployedObjectOperator", SupportedOperatorTypes, ref selectedOperator);
             ImGui.SameLine();
-            ImGui.Combo("times##DeployedObjectCount", ref count, object_types, object_types.Length);
+            ImGui.InputInt("times##DeployedObjectCount", ref count);
+            if (count < 0)
+            {
+                count = 0;
+            }
+
             ImGui.PopItemWidth();
             ImGui.SameLine();
             if (ImGui.Button("Add##DeployedObject"))

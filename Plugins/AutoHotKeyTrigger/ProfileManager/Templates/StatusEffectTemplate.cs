@@ -8,7 +8,6 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
     using AutoHotKeyTrigger.ProfileManager.Enums;
     using GameHelper.Utils;
     using ImGuiNET;
-    using System;
     using System.Collections.Generic;
 
     /// <summary>
@@ -44,25 +43,22 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             {
                 ImGui.Text("Player");
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(ImGui.GetFontSize() * 4.5f);
+                ImGui.SetNextItemWidth(ImGui.GetFontSize() * 4);
                 ImGuiHelper.IEnumerableComboBox("##StatusEffectOperator", SupportedOperatorTypes, ref selectedOperator);
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(Math.Min(TemplateUi.FieldWidth(0.55f), ImGui.GetFontSize() * 14f));
-                ImGui.InputTextWithHint("##StatusEffectBuffId", "(de)buff id", ref buffId, 200);
+                ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
+                ImGui.InputText("(de)buff", ref buffId, 200);
                 HelpBox();
             }
             else
             {
                 ImGui.Text("Player has (de)buff");
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(Math.Min(TemplateUi.FieldWidth(0.35f), ImGui.GetFontSize() * 10f));
-                ImGui.InputTextWithHint("##StatusEffectBuffId2", "id", ref buffId, 200);
+                ImGui.InputText("with", ref buffId, 200);
                 HelpBox();
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(ImGui.GetFontSize() * 4.5f);
                 ImGuiHelper.IEnumerableComboBox("##StatusEffectOperator", SupportedOperatorTypes, ref selectedOperator);
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(ImGui.GetFontSize() * 5f);
                 ImGui.InputFloat("##threshold", ref threshold);
                 ImGui.SameLine();
                 ImGuiHelper.EnumComboBox("##checkType", ref checkType);
@@ -72,7 +68,8 @@ namespace AutoHotKeyTrigger.ProfileManager.Templates
             }
 
             ImGui.PopID();
-            if (TemplateUi.AddButton("##StatusEffect"))
+            ImGui.SameLine();
+            if (ImGui.Button("Add##StatusEffect"))
             {
                 return selectedOperator switch
                 {

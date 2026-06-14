@@ -7,6 +7,7 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
     using System.Collections.Generic;
     using ClickableTransparentOverlay.Win32;
     using GameHelper.RemoteEnums;
+    using GameHelper.RemoteObjects.Components;
     using GameOffsets.Objects.Components;
 
     /// <summary>
@@ -30,14 +31,19 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
         HashSet<string> PlayerSkillIsUseable { get; }
 
         /// <summary>
+        ///     The names of minion "command" skills usable on at least one summoned minion.
+        /// </summary>
+        HashSet<string> MinionCommandSkillIsUsable { get; }
+
+        /// <summary>
         ///   The player skill details are in this structure.
         /// </summary>
         Dictionary<string, ActiveSkillDetails> ActiveSkills { get; }
 
         /// <summary>
-        ///     The objects deployed by the player with Object type as key and Object Counter as value.
+        ///     The objects deployed by the player, indexed by object-type id (absent ids read as 0).
         /// </summary>
-        int[] DeployedObjectsCount { get; }
+        DeployedObjectCounter DeployedObjectsCount { get; }
 
         /// <summary>
         ///     The buff list
@@ -86,57 +92,74 @@ namespace AutoHotKeyTrigger.ProfileManager.DynamicConditions.Interface
         ///     Counts nearby monsters of the given rarity that are currently undamageable
         ///     (in an invulnerability phase) in the outer circle.
         /// </summary>
+        /// <param name="rarity">The rarity selector for monster search</param>
         int UndamageableMonsterCount(MonsterRarity rarity);
 
         /// <summary>
         ///     Counts nearby monsters of the given rarity that are currently undamageable
         ///     (in an invulnerability phase).
         /// </summary>
+        /// <param name="rarity">The rarity selector for monster search</param>
+        /// <param name="zone">circle in which the monster should exists</param>
         int UndamageableMonsterCount(MonsterRarity rarity, MonsterNearbyZones zone);
 
         /// <summary>
         ///     Counts nearby monsters of the given rarity that are currently damageable
         ///     (i.e. NOT in an invulnerability phase) in the outer circle.
         /// </summary>
+        /// <param name="rarity">The rarity selector for monster search</param>
         int DamageableMonsterCount(MonsterRarity rarity);
 
         /// <summary>
         ///     Counts nearby monsters of the given rarity that are currently damageable
         ///     (i.e. NOT in an invulnerability phase).
         /// </summary>
+        /// <param name="rarity">The rarity selector for monster search</param>
+        /// <param name="zone">circle in which the monster should exists</param>
         int DamageableMonsterCount(MonsterRarity rarity, MonsterNearbyZones zone);
 
         /// <summary>
         ///     Counts nearby monsters of the given rarity within an explicit distance, ignoring the
         ///     configured inner/outer circle. Reaches up to the network bubble (~150).
         /// </summary>
+        /// <param name="rarity">The rarity selector for monster search</param>
+        /// <param name="maxDistance">Maximum distance from the player</param>
         int MonsterCountInRange(MonsterRarity rarity, int maxDistance);
 
         /// <summary>
         ///     Counts nearby monsters of the given rarity that are currently undamageable
         ///     (in an invulnerability phase) within an explicit distance.
         /// </summary>
+        /// <param name="rarity">The rarity selector for monster search</param>
+        /// <param name="maxDistance">Maximum distance from the player</param>
         int UndamageableMonsterCountInRange(MonsterRarity rarity, int maxDistance);
 
         /// <summary>
         ///     Counts nearby monsters of the given rarity that are currently damageable
         ///     (i.e. NOT in an invulnerability phase) within an explicit distance.
         /// </summary>
+        /// <param name="rarity">The rarity selector for monster search</param>
+        /// <param name="maxDistance">Maximum distance from the player</param>
         int DamageableMonsterCountInRange(MonsterRarity rarity, int maxDistance);
 
         /// <summary>
         ///     Counts nearby corpses (dead monsters) of the given rarity in the outer circle.
         /// </summary>
+        /// <param name="rarity">The rarity selector for corpse search</param>
         int CorpseCount(MonsterRarity rarity);
 
         /// <summary>
         ///     Counts nearby corpses (dead monsters) of the given rarity.
         /// </summary>
+        /// <param name="rarity">The rarity selector for corpse search</param>
+        /// <param name="zone">circle in which the corpse should exists</param>
         int CorpseCount(MonsterRarity rarity, MonsterNearbyZones zone);
 
         /// <summary>
         ///     Counts nearby corpses (dead monsters) of the given rarity within an explicit distance.
         /// </summary>
+        /// <param name="rarity">The rarity selector for corpse search</param>
+        /// <param name="maxDistance">Maximum distance from the player</param>
         int CorpseCountInRange(MonsterRarity rarity, int maxDistance);
 
         /// <summary>

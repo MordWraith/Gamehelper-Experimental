@@ -1,4 +1,4 @@
-// <copyright file="IconPicker.cs" company="PlaceholderCompany">
+﻿// <copyright file="IconPicker.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
@@ -8,7 +8,6 @@ namespace Radar
     using System.IO;
     using System.Numerics;
     using GameHelper;
-    using GameHelper.Localization;
     using ImGuiNET;
     using Newtonsoft.Json;
 
@@ -136,7 +135,7 @@ namespace Radar
             ImGui.InputFloat($"##iconscale", ref this.iconScale, 1f, 1f);
             ImGui.PopItemWidth();
             ImGui.SameLine();
-            ImGui.Checkbox(L("Path", "Pfad"), ref this.ShowPath);
+            ImGui.Checkbox("Path", ref this.ShowPath);
             if (this.ShowPath)
             {
                 ImGui.SameLine();
@@ -162,7 +161,7 @@ namespace Radar
             {
                 ImGui.SetNextWindowPos(this.popUpPos, ImGuiCond.Appearing);
                 ImGui.SetNextWindowSize(new Vector2(400), ImGuiCond.Appearing);
-                var title = L("Icon Picker (Double click to select an item)", "Icon-Auswahl (Doppelklick zum Auswaehlen)");
+                var title = $"Icon Picker (Double click to select an item)";
                 if (ImGui.Begin(title, ref this.showPopUp, PopUpFlags))
                 {
                     if (ImGui.IsWindowHovered() && ImGui.GetIO().MouseDoubleClicked[0])
@@ -219,7 +218,5 @@ namespace Radar
             this.UV0 = new Vector2(selected.X++ * size.X, selected.Y++ * size.Y);
             this.UV1 = new Vector2(selected.X * size.X, selected.Y * size.Y);
         }
-
-        private static string L(string english, string german) => OverlayLocalization.L(english, german);
     }
 }

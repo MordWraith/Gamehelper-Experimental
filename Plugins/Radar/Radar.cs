@@ -14,7 +14,6 @@ namespace Radar
     using Coroutine;
     using GameHelper;
     using GameHelper.CoroutineEvents;
-    using GameHelper.Localization;
     using GameHelper.Plugin;
     using GameHelper.RemoteEnums;
     using GameHelper.RemoteEnums.Entity;
@@ -84,6 +83,10 @@ namespace Radar
         private Dictionary<string, List<Vector2>?> tileIconPathCache = new();
 
         // Path targets the player has gotten close to, remembered per map instance.
+        // Keyed by AreaHash (stable across leaving/returning to the same instance,
+        // differs for a freshly-generated instance), then by the same cache keys used
+        // by the path caches (entity|<id>, tile|..., area|..., common|...).
+        // reachedPathKeys points at the active instance's set. Render-thread only.
         private readonly Dictionary<string, HashSet<string>> reachedPathKeysByArea = new();
         private HashSet<string> reachedPathKeys = new();
 
@@ -93,42 +96,45 @@ namespace Radar
 
         private string BossArenaTgtPathName => Path.Join(this.DllDirectory, "boss_arena_tgt_files.txt");
 
-        private string BossArenaTgtDefaultPathName => Path.Join(this.DllDirectory, "boss_arena_tgt_files.default.txt");
-
         private string StairsTgtPathName => Path.Join(this.DllDirectory, "stairs_tgt_files.txt");
-
-        private const int BossArenaTgtListCurrentRevision = 1;
 
         /// <inheritdoc/>
         public override void DrawSettings()
         {
-            ImGui.TextWrapped(L(
-                "If your mini/large map icon are not working/visible. Open this setting window, click anywhere on it and then hide this setting window. It will fix the issue.",
-                "Wenn Mini-/Grosskarten-Icons nicht sichtbar sind: Einstellungsfenster oeffnen, irgendwo hineinklicken und wieder schliessen."));
-            ImGui.DragFloat(L("Large Map Fix", "Grosskarten-Fix"), ref this.Settings.LargeMapScaleMultiplier, 0.001f, 0.1f, 2.0f);
-            ImGuiHelper.ToolTip(L(
-                "This slider is for fixing large map (icons) offset. You have to use it if you feel that LargeMap Icons are moving while your player is moving. You only have to find a value that works for you per game window resolution. Basically, you don't have to change it unless you change your game window resolution. This slider has no impact on mini-map icons. For windowed-full-screen default value should be good enough. If you want to add precise value (e.g. 0.137345) press CTRL + LMB",
-                "Korrigiert die Verschiebung der Grosskarten-Icons. Nur noetig, wenn Icons sich mit dem Spieler mitbewegen. Pro Aufloesung einmal einstellen. Hat keinen Einfluss auf die Minikarte. Fuer Fenster-Vollbild reicht der Standardwert. Praeziser Wert: STRG + LMB."));
-            ImGui.DragFloat(L("Large Map X Offset", "Grosskarte X-Offset"), ref this.Settings.LargeMapXOffset, 0.1f);
-            ImGuiHelper.ToolTip(L(
-                "Adjusts only the large map overlay horizontally. Negative moves it left, positive moves it right.",
-                "Verschiebt nur die Grosskarte horizontal. Negativ = links, positiv = rechts."));
-            ImGui.DragFloat(L("Large Map Y Offset", "Grosskarte Y-Offset"), ref this.Settings.LargeMapYOffset, 0.1f);
-            ImGuiHelper.ToolTip(L(
-                "Adjusts only the large map overlay vertically. Negative moves it up, positive moves it down.",
-                "Verschiebt nur die Grosskarte vertikal. Negativ = oben, positiv = unten."));
-            ImGui.DragFloat(L("Mini Map X Offset", "Minikarte X-Offset"), ref this.Settings.MiniMapXOffset, 0.1f);
-            ImGuiHelper.ToolTip(L(
-                "Adjusts only the mini-map overlay horizontally. Negative moves it left, positive moves it right.",
-                "Verschiebt nur die Minikarte horizontal. Negativ = links, positiv = rechts."));
-            ImGui.DragFloat(L("Mini Map Zoom", "Minikarten-Zoom"), ref this.Settings.MiniMapZoomMultiplier, 0.001f, 0.01f, 3f, "%.3f");
-            ImGuiHelper.ToolTip(L(
-                "Controls how far mini-map icons sit from your character (the mini-map's effective zoom).",
-                "Steuert, wie weit Minikarten-Icons vom Spieler entfernt sind."));
-            ImGui.Checkbox(L("Hide Radar when in Hideout/Town", "Radar in Hideout/Stadt ausblenden"), ref this.Settings.DrawWhenNotInHideoutOrTown);
-            ImGui.Checkbox(L("Hide Radar when game is in the background", "Radar ausblenden wenn Spiel im Hintergrund"), ref this.Settings.DrawWhenForeground);
-            ImGui.Checkbox(L("Hide Radar when game is paused", "Radar ausblenden wenn Spiel pausiert"), ref this.Settings.DrawWhenNotPaused);
-            if (ImGui.Checkbox(L("Modify Large Map Culling Window", "Grosskarten-Culling-Fenster anpassen"), ref this.Settings.ModifyCullWindow))
+            ImGui.TextWrapped("If your mini/large map icon are not working/visible. Open this " +
+                "setting window, click anywhere on it and then hide this setting window. It will fix the issue.");
+            ImGui.DragFloat("Large Map Fix", ref this.Settings.LargeMapScaleMultiplier, 0.001f, 0.1f, 2.0f);
+            ImGuiHelper.ToolTip("This slider is for fixing large map (icons) offset. " +
+                "You have to use it if you feel that LargeMap Icons " +
+                "are moving while your player is moving. You only have " +
+                "to find a value that works for you per game window resolution. " +
+                "Basically, you don't have to change it unless you change your " +
+                "game window resolution. Also, please contribute back, let me know " +
+                "what resolution you use and what value works best for you. " +
+                "This slider has no impact on mini-map icons. For windowed-full-screen " +
+                "default value should be good enough. If you want to add precise value " +
+                "(e.g. 0.137345) press CTRL + LMB");
+            ImGui.DragFloat("Large Map X Offset", ref this.Settings.LargeMapXOffset, 0.1f);
+            ImGuiHelper.ToolTip("Adjusts only the large map overlay horizontally. Negative moves it left, positive moves it right.");
+            ImGui.DragFloat("Large Map Y Offset", ref this.Settings.LargeMapYOffset, 0.1f);
+            ImGuiHelper.ToolTip("Adjusts only the large map overlay vertically. Negative moves it up, positive moves it down.");
+            ImGui.DragFloat("Mini Map X Offset", ref this.Settings.MiniMapXOffset, 0.1f);
+            ImGuiHelper.ToolTip("Adjusts only the mini-map overlay horizontally. Negative moves it left, positive moves it right.");
+            ImGui.DragFloat("Mini Map Zoom", ref this.Settings.MiniMapZoomMultiplier, 0.001f, 0.01f, 3f, "%.3f");
+            ImGuiHelper.ToolTip("Controls how far mini-map icons sit from your character (the mini-map's effective zoom).");
+
+            ImGui.Checkbox("Auto-Detect Local Co-op Mode", ref this.Settings.AutoDetectCoopMode);
+            ImGuiHelper.ToolTip("Automatically detects when you are playing local co-op in controller mode and adjusts map centering.");
+            if (!this.Settings.AutoDetectCoopMode)
+            {
+                ImGui.Checkbox("Enable Local Co-op Map Hack Centering", ref this.Settings.EnableCoopMode);
+                ImGuiHelper.ToolTip("Centers the map/maphack on the midpoint of P1 and P2 when playing co-op.");
+            }
+
+            ImGui.Checkbox("Hide Radar when in Hideout/Town", ref this.Settings.DrawWhenNotInHideoutOrTown);
+            ImGui.Checkbox("Hide Radar when game is in the background", ref this.Settings.DrawWhenForeground);
+            ImGui.Checkbox("Hide Radar when game is paused", ref this.Settings.DrawWhenNotPaused);
+            if (ImGui.Checkbox("Modify Large Map Culling Window", ref this.Settings.ModifyCullWindow))
             {
                 if (this.Settings.ModifyCullWindow)
                 {
@@ -137,7 +143,7 @@ namespace Radar
             }
 
             ImGui.TreePush("radar_culling_window");
-            if (ImGui.Checkbox(L("Make Culling Window Cover Whole Game", "Culling-Fenster ueber ganzes Spiel"), ref this.Settings.MakeCullWindowFullScreen))
+            if (ImGui.Checkbox("Make Culling Window Cover Whole Game", ref this.Settings.MakeCullWindowFullScreen))
             {
                 this.Settings.ModifyCullWindow = !this.Settings.MakeCullWindowFullScreen;
                 this.Settings.CullWindowPos = Vector2.Zero;
@@ -145,17 +151,17 @@ namespace Radar
                 this.Settings.CullWindowSize.Y = Core.Process.WindowArea.Height;
             }
 
-            if (ImGui.TreeNode(L("Culling window advance options", "Erweiterte Culling-Optionen")))
+            if (ImGui.TreeNode("Culling window advance options"))
             {
-                ImGui.Checkbox(L("Draw maphack in culling window", "Maphack im Culling-Fenster zeichnen"), ref this.Settings.DrawMapInCull);
-                ImGui.Checkbox(L("Draw POIs in culling window", "POIs im Culling-Fenster zeichnen"), ref this.Settings.DrawPOIInCull);
+                ImGui.Checkbox("Draw maphack in culling window", ref this.Settings.DrawMapInCull);
+                ImGui.Checkbox("Draw POIs in culling window", ref this.Settings.DrawPOIInCull);
                 ImGui.TreePop();
             }
 
             ImGui.TreePop();
             ImGui.Separator();
             ImGui.NewLine();
-            if (ImGui.Checkbox(L("Draw Area/Zone Map (maphack)", "Gebiets-/Zonenkarte zeichnen (Maphack)"), ref this.Settings.DrawWalkableMap))
+            if (ImGui.Checkbox("Draw Area/Zone Map (maphack)", ref this.Settings.DrawWalkableMap))
             {
                 if (this.Settings.DrawWalkableMap)
                 {
@@ -170,7 +176,7 @@ namespace Radar
                 }
             }
 
-            if (ImGui.ColorEdit4(L("Drawn Map Color", "Kartenfarbe"), ref this.Settings.WalkableMapColor))
+            if (ImGui.ColorEdit4("Drawn Map Color", ref this.Settings.WalkableMapColor))
             {
                 if (this.walkableMapTexture != IntPtr.Zero)
                 {
@@ -180,31 +186,21 @@ namespace Radar
 
             ImGui.Separator();
             ImGui.NewLine();
-            ImGui.Checkbox(L("Show terrain points of interest (A.K.A Terrain POI)", "Terrain-POIs anzeigen"), ref this.Settings.ShowImportantPOI);
-            ImGui.ColorEdit4(L("Terrain POI text color", "Terrain-POI Textfarbe"), ref this.Settings.POIColor);
-            ImGui.Checkbox(L("Add black background to Terrain POI text", "Schwarzen Hintergrund fuer Terrain-POI-Text"), ref this.Settings.EnablePOIBackground);
-            ImGui.Checkbox(L("Show Straight-Line Arrow to POIs", "Gerade Linie zu POIs"), ref this.Settings.ShowStraightLine);
-            ImGuiHelper.ToolTip(L(
-                "Draws a straight line+arrow to each POI. Green = clear, Red = blocked.",
-                "Zeichnet eine gerade Linie mit Pfeil zu jedem POI. Gruen = frei, Rot = blockiert."));
-            ImGui.Checkbox(L("Show A* Smooth Path to POIs", "A*-Pfad zu POIs"), ref this.Settings.ShowSmoothPath);
-            ImGuiHelper.ToolTip(L(
-                "Computes and draws the actual shortest walkable path (cyan).",
-                "Berechnet und zeichnet den kuerzesten begehbaren Pfad (cyan)."));
-            ImGui.DragFloat(L("POI Path Thickness", "POI-Pfadstaerke"), ref this.Settings.DirectionLineThickness, 0.1f, 0.1f, 10.0f, "%.1f");
-            ImGui.DragInt(L("Path Recompute Segments", "Pfad-Neuberechnung Segmente"), ref this.Settings.PathRecomputeSegments, 0.1f, 0, 20);
-            ImGuiHelper.ToolTip(L(
-                "0 = full recompute every cycle. Set to 3-5 to only recompute the first few segments of a cached path, reusing the tail. Higher values = faster but paths may be slightly stale when the player moves.",
-                "0 = volle Neuberechnung. 3-5 = nur erste Segmente neu berechnen. Hoeher = schneller, Pfad kann veralten."));
-            ImGui.DragInt(L("Path Recompute Interval (ms)", "Pfad-Intervall (ms)"), ref this.Settings.PathRecomputeIntervalMs, 1f, 5, 1000);
-            ImGuiHelper.ToolTip(L(
-                "How often paths are recomputed. Lower = more responsive, higher = less CPU usage.",
-                "Wie oft Pfade neu berechnet werden. Niedriger = reaktiver, hoeher = weniger CPU."));
-            ImGui.DragInt(L("Full Recompute Interval (ms)", "Volle Neuberechnung (ms)"), ref this.Settings.PathFullRecomputeIntervalMs, 100f, 1000, 10000);
-            ImGuiHelper.ToolTip(L(
-                "How often a full path recompute is forced, ignoring the segment-skip optimization. Ensures paths never get stuck stale.",
-                "Erzwingt periodisch eine volle Neuberechnung, damit Pfade nicht veralten."));
-            this.isAddNewPOIHeaderOpened = ImGui.CollapsingHeader(L("Add or Modify Terrain POI", "Terrain-POI hinzufuegen/aendern"));
+            ImGui.Checkbox("Show terrain points of interest (A.K.A Terrain POI)", ref this.Settings.ShowImportantPOI);
+            ImGui.ColorEdit4("Terrain POI text color", ref this.Settings.POIColor);
+            ImGui.Checkbox("Add black background to Terrain POI text", ref this.Settings.EnablePOIBackground);
+            ImGui.Checkbox("Show Straight-Line Arrow to POIs", ref this.Settings.ShowStraightLine);
+            ImGuiHelper.ToolTip("Draws a straight line+arrow to each POI. Green = clear, Red = blocked.");
+            ImGui.Checkbox("Show A* Smooth Path to POIs", ref this.Settings.ShowSmoothPath);
+            ImGuiHelper.ToolTip("Computes and draws the actual shortest walkable path (cyan).");
+            ImGui.DragFloat("POI Path Thickness", ref this.Settings.DirectionLineThickness, 0.1f, 0.1f, 10.0f, "%.1f");
+            ImGui.DragInt("Path Recompute Segments", ref this.Settings.PathRecomputeSegments, 0.1f, 0, 20);
+            ImGuiHelper.ToolTip("0 = full recompute every cycle. Set to 3-5 to only recompute the first few segments of a cached path, reusing the tail. Higher values = faster but paths may be slightly stale when the player moves.");
+            ImGui.DragInt("Path Recompute Interval (ms)", ref this.Settings.PathRecomputeIntervalMs, 1f, 5, 1000);
+            ImGuiHelper.ToolTip("How often paths are recomputed. Lower = more responsive, higher = less CPU usage.");
+            ImGui.DragInt("Full Recompute Interval (ms)", ref this.Settings.PathFullRecomputeIntervalMs, 100f, 1000, 10000);
+            ImGuiHelper.ToolTip("How often a full path recompute is forced, ignoring the segment-skip optimization. Ensures paths never get stuck stale.");
+            this.isAddNewPOIHeaderOpened = ImGui.CollapsingHeader("Add or Modify Terrain POI");
             if (this.isAddNewPOIHeaderOpened)
             {
                 this.AddNewPOIWidget();
@@ -213,102 +209,79 @@ namespace Radar
 
             ImGui.Separator();
             ImGui.NewLine();
-            ImGui.Checkbox(L("Hide Entities outside the network bubble", "Entitaeten ausserhalb der Netzwerkblase ausblenden"), ref this.Settings.HideOutsideNetworkBubble);
-            ImGui.Checkbox(L("Show Player Names", "Spielernamen anzeigen"), ref this.Settings.ShowPlayersNames);
-            ImGuiHelper.ToolTip(L(
-                "This button will not work while Player is in the Scourge.",
-                "Funktioniert nicht, solange der Spieler in der Scourge ist."));
-            ImGui.Checkbox(L("Show Paths to Icons", "Pfade zu Icons"), ref this.Settings.ShowEntityPaths);
-            ImGuiHelper.ToolTip(L(
-                "Global on/off for entity-icon pathing. Does not affect individual icon path settings.",
-                "Globaler Schalter fuer Icon-Pfade. Einzelne Icon-Einstellungen bleiben unveraendert."));
-            ImGui.DragFloat(L("Icon Path Thickness", "Icon-Pfadstaerke"), ref this.Settings.IconPathThickness, 0.1f, 0.1f, 10.0f, "%.1f");
-            ImGui.Checkbox(L("Hide reached paths for current map", "Erreichte Pfade auf aktueller Karte ausblenden"), ref this.Settings.HideReachedPaths);
-            ImGuiHelper.ToolTip(L(
-                "When you get close to a path target (entity, terrain POI or tile), its path stops being drawn for the rest of the current map. Resets automatically on area change.",
-                "Wenn du einem Pfadziel nahe kommst, wird sein Pfad fuer die restliche Karte ausgeblendet. Setzt sich bei Zonenwechsel zurueck."));
+            ImGui.Checkbox("Hide Entities outside the network bubble", ref this.Settings.HideOutsideNetworkBubble);
+            ImGui.Checkbox("Show Player Names", ref this.Settings.ShowPlayersNames);
+            ImGuiHelper.ToolTip("This button will not work while Player is in the Scourge.");
+            ImGui.Checkbox("Show Paths to Icons", ref this.Settings.ShowEntityPaths);
+            ImGuiHelper.ToolTip("Global on/off for entity-icon pathing. Does not affect individual icon path settings.");
+            ImGui.DragFloat("Icon Path Thickness", ref this.Settings.IconPathThickness, 0.1f, 0.1f, 10.0f, "%.1f");
+            ImGui.Checkbox("Hide reached paths for current map", ref this.Settings.HideReachedPaths);
+            ImGuiHelper.ToolTip("When you get close to a path target (entity, terrain POI or tile), its path stops being drawn for the rest of the current map. Resets automatically on area change.");
             if (this.Settings.HideReachedPaths)
             {
-                ImGui.DragFloat(L("Reached Distance", "Erreicht-Abstand"), ref this.Settings.ReachedPathDistance, 1f, 1f, 500f, "%.0f");
-                ImGuiHelper.ToolTip(L(
-                    "Grid distance at which a path target counts as reached and is hidden.",
-                    "Rasterabstand, ab dem ein Pfadziel als erreicht gilt und ausgeblendet wird."));
+                ImGui.DragFloat("Reached Distance", ref this.Settings.ReachedPathDistance, 1f, 1f, 500f, "%.0f");
+                ImGuiHelper.ToolTip("Grid distance at which a path target counts as reached and is hidden.");
             }
 
-            if (ImGui.Button(L("Reset Reached Paths", "Erreichte Pfade zuruecksetzen")))
+            if (ImGui.Button("Reset Reached Paths"))
             {
                 this.reachedPathKeys.Clear();
             }
 
-            ImGuiHelper.ToolTip(L(
-                "Show all paths for the current map again.",
-                "Alle Pfade auf der aktuellen Karte wieder anzeigen."));
-            ImGui.Checkbox(L("Pixel Perfect Icons", "Pixel-Perfect Icons"), ref this.Settings.IconPixelPerfect);
-            ImGuiHelper.ToolTip(L(
-                "Snap map icons to whole pixels for sharper, less blurry movement on the large and mini map.",
-                "Map-Icons auf ganze Pixel rasten fuer schaerfere, weniger verschwommene Darstellung auf Gross- und Minikarte."));
-            if (ImGui.CollapsingHeader(L("Icons Setting", "Icon-Einstellungen")))
+            ImGuiHelper.ToolTip("Show all paths for the current map again.");
+            if (ImGui.CollapsingHeader("Icons Setting"))
             {
                 this.Settings.DrawIconsSettingToImGui(
-                    L("BaseGame Icons", "Basis-Spiel-Icons"),
+                    "BaseGame Icons",
                     this.Settings.BaseIcons,
-                    L(
-                        "Blockages icon can be set from Delve Icons category i.e. 'Blockage OR DelveWall'",
-                        "Blockaden-Icon kann unter Delve-Icons gesetzt werden, z. B. 'Blockage OR DelveWall'"));
+                    "Blockages icon can be set from Delve Icons category i.e. 'Blockage OR DelveWall'");
 
                 this.Settings.DrawPOIMonsterSettingToImGui(this.DllDirectory);
                 this.Settings.OtherImportantObjectsSettingToImGui(this.DllDirectory);
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Breach Icons", "Breach-Icons"),
+                    "Breach Icons",
                     this.Settings.BreachIcons,
-                    L(
-                        "Breach bosses are same as BaseGame Icons -> Unique Monsters.",
-                        "Breach-Bosse entsprechen Basis-Icons -> Unique Monsters."));
+                    "Breach bosses are same as BaseGame Icons -> Unique Monsters.");
 
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Delirium Icons", "Delirium-Icons"),
+                    "Delirium Icons",
                     this.Settings.DeliriumIcons,
                     string.Empty);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Expedition Icons", "Expedition-Icons"),
+                    "Expedition Icons",
                     this.Settings.ExpeditionIcons,
                     string.Empty);
 
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Temple Icons", "Temple-Icons"),
+                    "Temple Icons",
                     this.Settings.TempleIcons,
-                    L(
-                        "Icons for Incursion Waygate devices (Vaal Ruins).",
-                        "Icons fuer Incursion-Waygate-Geraete (Vaal Ruins)."));
+                    "Icons for Incursion Waygate devices (Vaal Ruins).");
 
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Expedition Marker Icons", "Expedition-Marker-Icons"),
+                    "Expedition Marker Icons",
                     this.Settings.ExpeditionMarkerIcons,
-                    L(
-                        "Icons for expedition markers, keyed by MinimapIcon name. Set size to 0 to disable.",
-                        "Icons fuer Expedition-Marker (MinimapIcon-Name). Groesse 0 zum Deaktivieren."));
+                    "Icons for expedition markers, keyed by MinimapIcon name. Set size to 0 to disable.");
 
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Expedition Remnant Icons", "Expedition-Remnant-Icons"),
+                    "Expedition Remnant Icons",
                     this.Settings.ExpeditionRemnantIcons,
-                    L(
-                        "Icons for expedition remnants with specific mods. Set size to 0 to disable.",
-                        "Icons fuer Expedition-Remnants mit bestimmten Mods. Groesse 0 zum Deaktivieren."));
+                    "Icons for expedition remnants with specific mods. Set size to 0 to disable.");
 
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Runestone Icons", "Runenstein-Icons"),
+                    "Runestone Icons",
                     this.Settings.RunestoneIcons,
-                    L(
-                        "Icons for runestone encounters.",
-                        "Icons fuer Runenstein-Begegnungen."));
+                    "Icons for runestone encounters.");
 
                 this.Settings.DrawIconsSettingToImGui(
-                    L("Boss Icons", "Boss-Icons"),
+                    "Ritual Icons",
+                    this.Settings.RitualIcons,
+                    "Icon for Ritual rune objects.");
+
+                this.Settings.DrawIconsSettingToImGui(
+                    "Boss Icons",
                     this.Settings.BossIcons,
-                    L(
-                        "Icons for map boss arenas.",
-                        "Icons fuer Map-Boss-Arenen."));
+                    "Icons for map boss arenas.");
             }
         }
 
@@ -338,17 +311,12 @@ namespace Radar
                 ImGui.End();
             }
             
-            if (Core.States.GameCurrentState == GameStateTypes.EscapeState)
-            {
-                return;
-            }
-
             if (this.Settings.DrawWhenNotPaused && Core.States.GameCurrentState != GameStateTypes.InGameState)
             {
                 return;
             }
 
-            if (Core.States.GameCurrentState != GameStateTypes.InGameState)
+            if (Core.States.GameCurrentState is not (GameStateTypes.InGameState or GameStateTypes.EscapeState))
             {
                 return;
             }
@@ -364,8 +332,7 @@ namespace Radar
                 return;
             }
 
-            if (Core.States.InGameStateObject.GameUi.IsAnyLargePanelOpen &&
-                !Core.States.InGameStateObject.GameUi.IsInAreaTabLargeMapOpen)
+            if (Core.States.InGameStateObject.GameUi.IsAnyLargePanelOpen)
             {
                 return;
             }
@@ -375,6 +342,26 @@ namespace Radar
                 this.Settings.CullWindowPos = Vector2.Zero;
                 this.Settings.CullWindowSize.X = Core.Process.WindowArea.Size.Width;
                 this.Settings.CullWindowSize.Y = Core.Process.WindowArea.Size.Height;
+            }
+
+            var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
+            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
+            {
+                return;
+            }
+
+            var trackingPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var trackingHeight = playerRender.TerrainHeight;
+
+            var playerOther = currentAreaInstance.AwakeEntities.Values
+                .FirstOrDefault(e => e.EntitySubtype == EntitySubtypes.PlayerOther);
+            if (this.IsLocalCoopActive(playerRender, playerOther != null))
+            {
+                if (playerOther != null && playerOther.TryGetComponent<Render>(out var pOtherRender))
+                {
+                    trackingPos = (trackingPos + new Vector2(pOtherRender.GridPosition.X, pOtherRender.GridPosition.Y)) / 2f;
+                    trackingHeight = (trackingHeight + pOtherRender.TerrainHeight) / 2f;
+                }
             }
 
             this.CollectEntityPaths();
@@ -404,12 +391,12 @@ namespace Radar
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
                 ImGui.Begin("Large Map Culling Window", ImGuiHelper.TransparentWindowFlags);
                 ImGui.PopStyleVar();
-                this.DrawLargeMap(largeMapRealCenter);
-                this.DrawTgtFiles(largeMapRealCenter);
-                this.DrawDirectionLines(largeMapRealCenter);
-                this.DrawTgtIcons(largeMapRealCenter, largeMapModifiedZoom * 5f);
-                this.DrawMapIcons(largeMapRealCenter, largeMapModifiedZoom * 5f);
-                this.DrawEntityPaths(largeMapRealCenter);
+                this.DrawLargeMap(largeMapRealCenter, trackingPos, trackingHeight);
+                this.DrawTgtFiles(largeMapRealCenter, trackingPos, trackingHeight);
+                this.DrawDirectionLines(largeMapRealCenter, trackingPos, trackingHeight);
+                this.DrawTgtIcons(largeMapRealCenter, trackingPos, trackingHeight, largeMapModifiedZoom * 5f);
+                this.DrawMapIcons(largeMapRealCenter, trackingPos, trackingHeight, largeMapModifiedZoom * 5f);
+                this.DrawEntityPaths(largeMapRealCenter, trackingPos, trackingHeight);
                 ImGui.End();
             }
 
@@ -437,9 +424,9 @@ namespace Radar
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
                 ImGui.Begin("###minimapRadar", ImGuiHelper.TransparentWindowFlags);
                 ImGui.PopStyleVar();
-                this.DrawTgtIcons(miniMapCenter, miniMap.Zoom);
-                this.DrawMapIcons(miniMapCenter, miniMap.Zoom);
-                this.DrawEntityPaths(miniMapCenter);
+                this.DrawTgtIcons(miniMapCenter, trackingPos, trackingHeight, miniMap.Zoom);
+                this.DrawMapIcons(miniMapCenter, trackingPos, trackingHeight, miniMap.Zoom);
+                this.DrawEntityPaths(miniMapCenter, trackingPos, trackingHeight);
                 ImGui.End();
             }
         }
@@ -486,8 +473,6 @@ namespace Radar
                 this.Settings.BossArenaTgts = JsonConvert.DeserializeObject
                     <Dictionary<string, string>>(bossfiles) ?? new Dictionary<string, string>();
             }
-
-            this.MaybeRestoreBossArenaTgtsFromDefault();
 
             if (File.Exists(this.StairsTgtPathName))
             {
@@ -539,7 +524,7 @@ namespace Radar
             }
         }
 
-        private void DrawLargeMap(Vector2 mapCenter)
+        private void DrawLargeMap(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             if (!this.Settings.DrawWalkableMap)
             {
@@ -551,26 +536,20 @@ namespace Radar
                 return;
             }
 
-            var player = Core.States.InGameStateObject.CurrentAreaInstance.Player;
-            if (!player.TryGetComponent<Render>(out var pRender))
-            {
-                return;
-            }
-
             var rectf = new RectangleF(
-                -pRender.GridPosition.X,
-                -pRender.GridPosition.Y,
+                -trackingPos.X,
+                -trackingPos.Y,
                 this.walkableMapDimension.X,
                 this.walkableMapDimension.Y);
 
             var p1 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Left, rectf.Top), -pRender.TerrainHeight);
+                new Vector2(rectf.Left, rectf.Top), -trackingHeight);
             var p2 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Right, rectf.Top), -pRender.TerrainHeight);
+                new Vector2(rectf.Right, rectf.Top), -trackingHeight);
             var p3 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Right, rectf.Bottom), -pRender.TerrainHeight);
+                new Vector2(rectf.Right, rectf.Bottom), -trackingHeight);
             var p4 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Left, rectf.Bottom), -pRender.TerrainHeight);
+                new Vector2(rectf.Left, rectf.Bottom), -trackingHeight);
             p1 += mapCenter;
             p2 += mapCenter;
             p3 += mapCenter;
@@ -586,7 +565,7 @@ namespace Radar
             }
         }
 
-        private void DrawTgtFiles(Vector2 mapCenter)
+        private void DrawTgtFiles(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             var col = ImGuiHelper.Color(
                 (uint)(this.Settings.POIColor.X * 255),
@@ -605,12 +584,7 @@ namespace Radar
             }
 
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
-
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var pPos = trackingPos;
             var clipMin = ImGui.GetWindowPos();
             var clipMax = clipMin + ImGui.GetWindowSize();
 
@@ -624,7 +598,7 @@ namespace Radar
                 }
 
                 var fpos = Helper.DeltaInWorldToMapDelta(
-                    location - pPos, -playerRender.TerrainHeight + height);
+                    location - pPos, -trackingHeight + height);
                 var textMin = mapCenter + fpos - stringImGuiSize;
                 var textMax = mapCenter + fpos + stringImGuiSize;
                 if (textMax.X < clipMin.X || textMin.X > clipMax.X || textMax.Y < clipMin.Y || textMin.Y > clipMax.Y)
@@ -705,7 +679,7 @@ namespace Radar
             }
         }
 
-        private void DrawDirectionLines(Vector2 mapCenter)
+        private void DrawDirectionLines(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             var showStraight = this.Settings.ShowStraightLine;
             var showSmooth = this.Settings.ShowSmoothPath;
@@ -727,7 +701,8 @@ namespace Radar
                 return;
             }
 
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var actualPlayerPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var pPos = actualPlayerPos;
             var gridHeightData = currentAreaInstance.GridHeightData;
 
             // Build door-override map: open doors force their cells to walkable
@@ -812,6 +787,8 @@ namespace Radar
                 // Only launch if no previous task is still running
                 if (this.pendingPathTask == null || this.pendingPathTask.IsCompleted)
                 {
+                    // Skip reached POIs — see the note in RebuildEntityPaths. Safe because the
+                    // previous task has completed and this is a private list for the new task.
                     var snap = poiSnapshot.Where(p => !this.IsReached(p.cacheKey)).ToList();
                     var wd = walkableData;
                     var bpr = bytesPerRow;
@@ -839,6 +816,10 @@ namespace Radar
             {
                 var paletteColor = poiPalette[poiColorIndex % poiPalette.Length];
                 poiColorIndex++;
+
+                // Reached POIs aren't recomputed (so the smooth path drops out of the cache),
+                // but the straight-line arrow below is computed inline and isn't cache-gated,
+                // so this explicit skip is still required to hide reached POIs.
                 if (this.IsReached(cacheKey))
                 {
                     continue;
@@ -853,9 +834,10 @@ namespace Radar
                 }
 
                 var poiFpos = Helper.DeltaInWorldToMapDelta(
-                    gridPos - pPos, -playerRender.TerrainHeight + poiHeight);
+                    gridPos - trackingPos, -trackingHeight + poiHeight);
                 var poiScreen = mapCenter + poiFpos;
-                var playerScreen = mapCenter;
+                var playerScreen = mapCenter + Helper.DeltaInWorldToMapDelta(
+                    actualPlayerPos - trackingPos, -trackingHeight + playerRender.TerrainHeight);
 
                 // --- Straight-line arrow ---
                 if (showStraight)
@@ -884,7 +866,7 @@ namespace Radar
                     this.poiPathCache.TryGetValue(cacheKey, out var cachedPath) &&
                     cachedPath != null && cachedPath.Count > 1)
                 {
-                    var prevScreen = mapCenter;
+                    var prevScreen = playerScreen;
                     for (var pi = 1; pi < cachedPath.Count; pi++)
                     {
                         var pt = cachedPath[pi];
@@ -897,7 +879,7 @@ namespace Radar
                             ptHeight = gridHeightData[iy][ix];
                         }
 
-                        var ptFpos = Helper.DeltaInWorldToMapDelta(pt - pPos, -playerRender.TerrainHeight + ptHeight);
+                        var ptFpos = Helper.DeltaInWorldToMapDelta(pt - trackingPos, -trackingHeight + ptHeight);
                         var ptScreen = mapCenter + ptFpos;
                         fgDraw.AddLine(prevScreen, ptScreen, paletteColor, thickness + 1f);
                         prevScreen = ptScreen;
@@ -906,34 +888,10 @@ namespace Radar
             }
         }
 
-        private static void GetIconImageBounds(
-            Vector2 center,
-            Vector2 halfSize,
-            bool pixelPerfect,
-            out Vector2 min,
-            out Vector2 max)
-        {
-            if (pixelPerfect)
-            {
-                min = new Vector2(MathF.Round(center.X - halfSize.X), MathF.Round(center.Y - halfSize.Y));
-                max = min + (halfSize * 2f);
-                return;
-            }
-
-            min = center - halfSize;
-            max = center + halfSize;
-        }
-
-        private void DrawTgtIcons(Vector2 mapCenter, float iconSizeMultiplier)
+        private void DrawTgtIcons(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight, float iconSizeMultiplier)
         {
             var fgDraw = ImGui.GetWindowDrawList();
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
-
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
 
             foreach (var tgtKV in currentAreaInstance.TgtTilesLocations)
             {
@@ -944,7 +902,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, templeIcon, iconSizeMultiplier, shiftUp: true);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, templeIcon, iconSizeMultiplier, shiftUp: true);
                 }
                 else if (tgtKV.Key.StartsWith(RunestoneTgtPrefix) && tgtKV.Key.EndsWith(":1-y:1"))
                 {
@@ -953,7 +911,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, runestoneIcon, iconSizeMultiplier, shiftUp: true);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, runestoneIcon, iconSizeMultiplier, shiftUp: true);
                 }
                 else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
                 {
@@ -962,7 +920,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, bossIcon, iconSizeMultiplier);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, bossIcon, iconSizeMultiplier);
                 }
                 else if (this.Settings.StairsTgts.ContainsKey(tgtKV.Key))
                 {
@@ -971,7 +929,7 @@ namespace Radar
                         continue;
                     }
 
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, stairsIcon, iconSizeMultiplier);
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, trackingPos, trackingHeight, tgtKV.Value, stairsIcon, iconSizeMultiplier);
                 }
             }
         }
@@ -979,8 +937,8 @@ namespace Radar
         private void DrawIconAtTgtLocations(
             ImDrawListPtr fgDraw,
             Vector2 mapCenter,
-            Vector2 pPos,
-            Render playerRender,
+            Vector2 trackingPos,
+            float trackingHeight,
             List<Vector2> locations,
             IconPicker icon,
             float iconSizeMultiplier,
@@ -998,34 +956,28 @@ namespace Radar
                 }
 
                 var fpos = Helper.DeltaInWorldToMapDelta(
-                    location - pPos, -playerRender.TerrainHeight + height);
+                    location - trackingPos, -trackingHeight + height);
                 var iconSizeMultiplierVector = new Vector2(iconSizeMultiplier);
                 iconSizeMultiplierVector *= icon.IconScale;
                 var offset = shiftUp ? new Vector2(0, iconSizeMultiplierVector.Y) : Vector2.Zero;
-                var center = mapCenter + fpos - offset;
-                GetIconImageBounds(center, iconSizeMultiplierVector, this.Settings.IconPixelPerfect, out var min, out var max);
                 fgDraw.AddImage(
                     icon.TexturePtr,
-                    min,
-                    max,
+                    mapCenter + fpos - iconSizeMultiplierVector - offset,
+                    mapCenter + fpos + iconSizeMultiplierVector - offset,
                     icon.UV0,
                     icon.UV1);
             }
         }
 
-        private void DrawMapIcons(Vector2 mapCenter, float iconSizeMultiplier)
+        private void DrawMapIcons(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight, float iconSizeMultiplier)
         {
             var fgDraw = ImGui.GetWindowDrawList();
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
 
             var clipMin = ImGui.GetWindowPos();
             var clipMax = clipMin + ImGui.GetWindowSize();
             var clipPadding = iconSizeMultiplier * 4f;
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
+            var pPos = trackingPos;
 
             var baseIcons = this.Settings.BaseIcons;
             var expeditionIcons = this.Settings.ExpeditionIcons;
@@ -1074,7 +1026,7 @@ namespace Radar
                 }
 
                 var ePos = new Vector2(entityRender.GridPosition.X, entityRender.GridPosition.Y);
-                var fpos = Helper.DeltaInWorldToMapDelta(ePos - pPos, entityRender.TerrainHeight - playerRender.TerrainHeight);
+                var fpos = Helper.DeltaInWorldToMapDelta(ePos - pPos, entityRender.TerrainHeight - trackingHeight);
                 var screenPos = mapCenter + fpos;
                 if (screenPos.X < clipMin.X - clipPadding || screenPos.X > clipMax.X + clipPadding ||
                     screenPos.Y < clipMin.Y - clipPadding || screenPos.Y > clipMax.Y + clipPadding)
@@ -1087,11 +1039,10 @@ namespace Radar
                 void DrawIcon(IconPicker icon)
                 {
                     var scaled = iconSizeMultiplierVector * icon.IconScale;
-                    GetIconImageBounds(screenPos, scaled, this.Settings.IconPixelPerfect, out var min, out var max);
                     fgDraw.AddImage(
                         icon.TexturePtr,
-                        min,
-                        max,
+                        screenPos - scaled,
+                        screenPos + scaled,
                         icon.UV0,
                         icon.UV1);
                 }
@@ -1238,6 +1189,7 @@ namespace Radar
                         {
                             var hasMinimapIcon = entityValue.TryGetComponent<MinimapIcon>(out var runeMmIcon);
 
+                            IconPicker? drawnRuneIcon = null;
                             if (hasMinimapIcon &&
                                 !string.IsNullOrEmpty(runeMmIcon!.IconName) &&
                                 RadarSettings.RunestoneIconNameMap.TryGetValue(runeMmIcon.IconName, out var runeDisplayName) &&
@@ -1245,11 +1197,61 @@ namespace Radar
                                 runeIcon.IconScale > 0)
                             {
                                 DrawIcon(runeIcon);
+                                drawnRuneIcon = runeIcon;
                             }
                             else if (this.Settings.RunestoneIcons.TryGetValue("Runestone Encounter", out runeIcon) &&
                                      runeIcon.IconScale > 0)
                             {
                                 DrawIcon(runeIcon);
+                                drawnRuneIcon = runeIcon;
+                            }
+
+                            // Show the runestone's socket count (StateMachine state "sockets")
+                            // just to the right of the icon.
+                            if (drawnRuneIcon != null &&
+                                entityValue.TryGetComponent<StateMachine>(out var runeSm))
+                            {
+                                long sockets = 0;
+                                foreach (var state in runeSm.States)
+                                {
+                                    if (state.Name == "sockets")
+                                    {
+                                        sockets = state.Value;
+                                        break;
+                                    }
+                                }
+
+                                if (sockets > 0)
+                                {
+                                    var socketText = sockets.ToString();
+
+                                    // Bigger text overall; 5+ sockets get an even larger, red label.
+                                    var highSockets = sockets >= 5;
+                                    var fontScale = highSockets ? 3f : 1.8f;
+                                    var fontSize = ImGui.GetFontSize() * fontScale;
+                                    var textColor = highSockets
+                                        ? ImGuiHelper.Color(255, 40, 40, 255)
+                                        : ImGuiHelper.Color(255, 255, 255, 255);
+
+                                    var textSize = ImGui.CalcTextSize(socketText) * fontScale;
+                                    var textHalf = textSize / 2f;
+                                    var iconHalfWidth = iconSizeMultiplier * drawnRuneIcon.IconScale;
+                                    var textPos = new Vector2(
+                                        screenPos.X + iconHalfWidth + 2f,
+                                        screenPos.Y - textHalf.Y);
+                                    fgDraw.AddRectFilled(textPos, textPos + textSize,
+                                        ImGuiHelper.Color(0, 0, 0, 200));
+                                    fgDraw.AddText(ImGui.GetFont(), fontSize, textPos,
+                                        textColor, socketText);
+                                }
+                            }
+                        }
+                        else if (entityValue.EntityCustomGroup == RadarSettings.RitualGroup)
+                        {
+                            if (this.Settings.RitualIcons.TryGetValue("Ritual", out var ritualIcon) &&
+                                ritualIcon.IconScale > 0)
+                            {
+                                DrawIcon(ritualIcon);
                             }
                         }
                         else
@@ -1299,6 +1301,9 @@ namespace Radar
             {
                 if (icon != null && icon.ShowPath && icon.IconScale > 0)
                 {
+                    // Record "reached" here (player position is available), but keep the
+                    // target in the snapshot so the background recompute pipeline stays
+                    // stable. Reached paths are skipped at draw time instead.
                     this.MarkReachedIfClose($"entity|{entityId}", pPos, ePos);
                     this.entityPathSnapshot.Add((entityId, ePos, icon.PathColor));
                 }
@@ -1471,6 +1476,14 @@ namespace Radar
                                 TryAdd(eId, ePos, runeIcon);
                             }
                         }
+                        else if (ev.EntityCustomGroup == RadarSettings.RitualGroup)
+                        {
+                            if (this.Settings.RitualIcons.TryGetValue("Ritual", out var ritualIcon) &&
+                                ritualIcon.IconScale > 0)
+                            {
+                                TryAdd(eId, ePos, ritualIcon);
+                            }
+                        }
                         else
                         {
                             if (!this.Settings.OtherImportantObjects.TryGetValue(
@@ -1576,6 +1589,11 @@ namespace Radar
             var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
             var doorOverrides = LineWalker.BuildDoorOverrideMap(currentAreaInstance);
 
+            // Exclude reached targets from the work the background task does. This is safe:
+            // the task gets its own private copy here, and the throttle above guarantees the
+            // previous task has already completed (the pipeline is effectively "restarted"
+            // each cycle), so we never mutate data a running task is reading. Reached entries
+            // drop out of the cache on the next swap, and the draw path skips them regardless.
             var snap = this.entityPathSnapshot
                 .Where(e => !this.IsReached($"entity|{e.entityId}")).ToArray();
             var tileSnap = this.tileIconPathSnapshot
@@ -1612,7 +1630,7 @@ namespace Radar
         /// <summary>
         /// Draws cached entity paths. Must be called after CollectEntityPaths.
         /// </summary>
-        private void DrawEntityPaths(Vector2 mapCenter)
+        private void DrawEntityPaths(Vector2 mapCenter, Vector2 trackingPos, float trackingHeight)
         {
             if (!this.Settings.ShowEntityPaths ||
                 (this.entityPathSnapshot.Count == 0 && this.tileIconPathSnapshot.Count == 0))
@@ -1621,12 +1639,6 @@ namespace Radar
             }
 
             var currentAreaInstance = Core.States.InGameStateObject.CurrentAreaInstance;
-            if (!currentAreaInstance.Player.TryGetComponent<Render>(out var playerRender))
-            {
-                return;
-            }
-
-            var pPos = new Vector2(playerRender.GridPosition.X, playerRender.GridPosition.Y);
             var gridHeightData = currentAreaInstance.GridHeightData;
 
             ImDrawListPtr fgDraw;
@@ -1643,6 +1655,8 @@ namespace Radar
 
             foreach (var (entityId, _, color) in this.entityPathSnapshot)
             {
+                // Reached targets are excluded from recompute, so they fall out of the cache
+                // on the next swap and the lookup below skips them — no explicit check needed.
                 if (!this.entityPathCache.TryGetValue(entityId, out var cachedPath) ||
                     cachedPath == null || cachedPath.Count <= 1)
                 {
@@ -1655,7 +1669,17 @@ namespace Radar
                     (uint)(color.Z * 255),
                     (uint)(color.W * 255));
 
-                var prevScreen = mapCenter;
+                var startPt = cachedPath[0];
+                float startPtHeight = 0;
+                var sx = (int)startPt.X;
+                var sy = (int)startPt.Y;
+                if (sx >= 0 && sx < gridHeightData[0].Length &&
+                    sy >= 0 && sy < gridHeightData.Length)
+                {
+                    startPtHeight = gridHeightData[sy][sx];
+                }
+                var prevScreen = mapCenter + Helper.DeltaInWorldToMapDelta(startPt - trackingPos, -trackingHeight + startPtHeight);
+
                 for (var pi = 1; pi < cachedPath.Count; pi++)
                 {
                     var pt = cachedPath[pi];
@@ -1668,7 +1692,7 @@ namespace Radar
                         ptHeight = gridHeightData[iy][ix];
                     }
 
-                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - pPos, -playerRender.TerrainHeight + ptHeight);
+                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - trackingPos, -trackingHeight + ptHeight);
                     var ptScreen = mapCenter + ptFpos;
                     fgDraw.AddLine(prevScreen, ptScreen, pathColor, thickness + 1f);
                     prevScreen = ptScreen;
@@ -1678,6 +1702,7 @@ namespace Radar
             // --- Terrain-tile icon paths ---
             foreach (var (cacheKey, _, color) in this.tileIconPathSnapshot)
             {
+                // Reached tiles fall out of the cache on the next swap; the lookup skips them.
                 if (!this.tileIconPathCache.TryGetValue(cacheKey, out var cachedPath) ||
                     cachedPath == null || cachedPath.Count <= 1)
                 {
@@ -1690,7 +1715,17 @@ namespace Radar
                     (uint)(color.Z * 255),
                     (uint)(color.W * 255));
 
-                var prevScreen = mapCenter;
+                var startPt = cachedPath[0];
+                float startPtHeight = 0;
+                var sx = (int)startPt.X;
+                var sy = (int)startPt.Y;
+                if (sx >= 0 && sx < gridHeightData[0].Length &&
+                    sy >= 0 && sy < gridHeightData.Length)
+                {
+                    startPtHeight = gridHeightData[sy][sx];
+                }
+                var prevScreen = mapCenter + Helper.DeltaInWorldToMapDelta(startPt - trackingPos, -trackingHeight + startPtHeight);
+
                 for (var pi = 1; pi < cachedPath.Count; pi++)
                 {
                     var pt = cachedPath[pi];
@@ -1703,7 +1738,7 @@ namespace Radar
                         ptHeight = gridHeightData[iy][ix];
                     }
 
-                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - pPos, -playerRender.TerrainHeight + ptHeight);
+                    var ptFpos = Helper.DeltaInWorldToMapDelta(pt - trackingPos, -trackingHeight + ptHeight);
                     var ptScreen = mapCenter + ptFpos;
                     fgDraw.AddLine(prevScreen, ptScreen, pathColor, thickness + 1f);
                     prevScreen = ptScreen;
@@ -1711,6 +1746,12 @@ namespace Radar
             }
         }
 
+        /// <summary>
+        /// Points <see cref="reachedPathKeys"/> at the reached-set for the current map instance,
+        /// keyed by <c>AreaInstance.AreaHash</c>. The hash is stable when leaving and returning to
+        /// the same instance (e.g. a town round-trip), so reached paths stay hidden, but differs for
+        /// a freshly-generated instance of the same area, which starts with an empty set.
+        /// </summary>
         private void SwitchReachedPathsToCurrentArea()
         {
             var areaHash = Core.States.InGameStateObject.CurrentAreaInstance.AreaHash;
@@ -1729,6 +1770,13 @@ namespace Radar
             this.reachedPathKeys = set;
         }
 
+        /// <summary>
+        /// If the feature is enabled and the player is within
+        /// <see cref="RadarSettings.ReachedPathDistance"/> of the target, records
+        /// <paramref name="key"/> as reached for the current map instance so its path stays
+        /// hidden for the rest of the map (even after the player moves away). Called during
+        /// path collection, where the player position is available.
+        /// </summary>
         private void MarkReachedIfClose(string key, Vector2 playerPos, Vector2 targetPos)
         {
             if (!this.Settings.HideReachedPaths || this.reachedPathKeys.Contains(key))
@@ -1743,6 +1791,11 @@ namespace Radar
             }
         }
 
+        /// <summary>
+        /// Whether the path target identified by <paramref name="key"/> has been reached and
+        /// should therefore not be drawn. Used at draw time so the recompute pipeline keeps
+        /// seeing a stable snapshot. Honours the <see cref="RadarSettings.HideReachedPaths"/> toggle.
+        /// </summary>
         private bool IsReached(string key) =>
             this.Settings.HideReachedPaths && this.reachedPathKeys.Contains(key);
 
@@ -1809,55 +1862,6 @@ namespace Radar
                 this.SwitchReachedPathsToCurrentArea();
                 this.GenerateMapTexture();
                 this.LogBossArenaTgtMatches();
-            }
-        }
-
-        private void MaybeRestoreBossArenaTgtsFromDefault()
-        {
-            if (this.Settings.BossArenaTgtListRevision >= BossArenaTgtListCurrentRevision)
-            {
-                return;
-            }
-
-            var previousCount = this.Settings.BossArenaTgts.Count;
-            if (!this.TryLoadDefaultBossArenaTgts(out var defaults))
-            {
-                Console.WriteLine(
-                    "[Radar] Boss arena list migration pending: boss_arena_tgt_files.default.txt missing in plugin folder.");
-                return;
-            }
-
-            this.Settings.BossArenaTgts = defaults;
-            var bossfiles = JsonConvert.SerializeObject(defaults, Formatting.Indented);
-            File.WriteAllText(this.BossArenaTgtPathName, bossfiles);
-            this.Settings.BossArenaTgtListRevision = BossArenaTgtListCurrentRevision;
-            Directory.CreateDirectory(Path.GetDirectoryName(this.SettingPathname) ?? string.Empty);
-            File.WriteAllText(
-                this.SettingPathname,
-                JsonConvert.SerializeObject(this.Settings, Formatting.Indented));
-            Console.WriteLine(
-                $"[Radar] Restored boss_arena_tgt_files.txt from default ({previousCount} -> {defaults.Count} entries, one-time cleanup).");
-        }
-
-        private bool TryLoadDefaultBossArenaTgts(out Dictionary<string, string> defaults)
-        {
-            defaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            if (!File.Exists(this.BossArenaTgtDefaultPathName))
-            {
-                return false;
-            }
-
-            try
-            {
-                var content = File.ReadAllText(this.BossArenaTgtDefaultPathName);
-                defaults = JsonConvert.DeserializeObject<Dictionary<string, string>>(content)
-                    ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                return defaults.Count > 0;
-            }
-            catch
-            {
-                defaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                return false;
             }
         }
 
@@ -2154,8 +2158,8 @@ namespace Radar
                         }
 
                         ImGui.SameLine();
-                        ImGui.Text($"{L("POI Path", "POI-Pfad")}: {tgt.Key}, {L("Display", "Anzeige")}: {tgt.Value}");
-                        ImGuiHelper.ToolTip(L("Click me to Modify.", "Klicken zum Bearbeiten."));
+                        ImGui.Text($"POI Path: {tgt.Key}, Display: {tgt.Value}");
+                        ImGuiHelper.ToolTip("Click me to Modify.");
                         if (ImGui.IsItemClicked())
                         {
                             this.tmpTileName = tgt.Key;
@@ -2179,8 +2183,8 @@ namespace Radar
                         }
 
                         ImGui.SameLine();
-                        ImGui.Text($"{L("POI Path", "POI-Pfad")}: {tgt.Key}, {L("Display", "Anzeige")}: {tgt.Value}");
-                        ImGuiHelper.ToolTip(L("Click me to Modify.", "Klicken zum Bearbeiten."));
+                        ImGui.Text($"POI Path: {tgt.Key}, Display: {tgt.Value}");
+                        ImGuiHelper.ToolTip("Click me to Modify.");
                         if (ImGui.IsItemClicked())
                         {
                             this.tmpTileName = tgt.Key;
@@ -2192,8 +2196,6 @@ namespace Radar
                 ImGui.TreePop();
             }
         }
-
-        private static string L(string english, string german) => OverlayLocalization.L(english, german);
 
         private void CleanUpRadarPluginCaches()
         {
@@ -2213,6 +2215,36 @@ namespace Radar
             this.tileIconPathSnapshot.Clear();
             this.RemoveMapTexture();
             this.currentAreaName = string.Empty;
+        }
+
+        private bool IsLocalCoopActive(Render playerRender, bool hasOtherPlayer)
+        {
+            if (!this.Settings.AutoDetectCoopMode)
+            {
+                return this.Settings.EnableCoopMode;
+            }
+
+            if (!Core.GHSettings.EnableControllerMode || !hasOtherPlayer)
+            {
+                return false;
+            }
+
+            var worldData = Core.States.InGameStateObject.CurrentWorldInstance;
+            if (worldData == null || worldData.Address == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var screenPos = worldData.WorldToScreen(playerRender.WorldPosition, playerRender.TerrainHeight);
+            if (screenPos == Vector2.Zero)
+            {
+                return false;
+            }
+
+            var screenCenter = new Vector2(
+                Core.Process.WindowArea.Width / 2f,
+                Core.Process.WindowArea.Height / 2f);
+            return Vector2.Distance(screenPos, screenCenter) > 35f;
         }
     }
 }
