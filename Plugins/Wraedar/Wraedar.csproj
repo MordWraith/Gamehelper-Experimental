@@ -1,7 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Library</OutputType>
+    
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+<OutputType>Library</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -54,7 +58,11 @@
 
   <Target Name="CopyFiles" AfterTargets="Build">
     <PropertyGroup>
-      <DeployDir>..\..\GameHelper\bin\$(Configuration)\$(TargetFramework)\win-x64\Plugins\$(ProjectName)</DeployDir>
+      
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+<DeployDir>..\..\GameHelper\bin\$(Configuration)\$(TargetFramework)\win-x64\Plugins\$(ProjectName)</DeployDir>
       <DxtDll>$(MSBuildProjectDirectory)\DieselExileTools\bin\$(Configuration)\$(TargetFramework)\win-x64\DieselExileTools.dll</DxtDll>
       <DxtPdb>$(MSBuildProjectDirectory)\DieselExileTools\bin\$(Configuration)\$(TargetFramework)\win-x64\DieselExileTools.pdb</DxtPdb>
     </PropertyGroup>
@@ -69,3 +77,4 @@
   </Target>
 
 </Project>
+

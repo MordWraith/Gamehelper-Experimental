@@ -10,4 +10,10 @@ Stabiler Quellcode (getrennt):
 Build + Test:     rebuild-experimental.bat
 GitHub Release:   rebuild-and-publish-experimental.bat
 
+Versionierung (ab Komponenten-Split):
+  versions.json           - Core + Plugins getrennt (je 1.0.0 Start)
+  Nur Plugin bumpen:       scripts\set-component-version.ps1 -Component plugin -PluginId Atlas -Version 1.0.1
+  Nur Core bumpen:         scripts\set-component-version.ps1 -Component core -Version 1.0.1
+  Rollback Monolith 1.3.2: rollback-1.3.2-monolith.bat  (Git-Tag v1.3.2-monolith)
+
 Der fruehere Ordner "Gamehelper Experimental" ist obsolet (Deploy liegt jetzt in publish\).

@@ -70,8 +70,9 @@ function Prompt-VersionInput {
 
     $current = Get-ProjectVersion -Root $Root
     Write-Host ""
-    Write-Host "Versionsnummer fuer diesen Build" -ForegroundColor Cyan
-    Write-Host "  Aktuell in den Projekten: $current" -ForegroundColor DarkGray
+    Write-Host "Versionsnummer fuer diesen Build (manifest.version = core)" -ForegroundColor Cyan
+    Write-Host "  Aktuell core in versions.json: $current" -ForegroundColor DarkGray
+    Write-Host "  Einzelne Komponente: scripts\set-component-version.ps1 -Component plugin -PluginId Atlas -Version 1.0.1" -ForegroundColor DarkGray
     Write-Host "  Format: Haupt.Neben.Patch (z.B. 1.0.2)" -ForegroundColor DarkGray
     Write-Host "  Leer lassen = $current beibehalten" -ForegroundColor DarkGray
     Write-Host ""
