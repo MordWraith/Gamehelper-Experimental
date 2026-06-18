@@ -26,35 +26,41 @@ namespace GameHelper.Plugin
 
         {
 
-            ["Atlas"] = new("Nekkoy", "GameHelper2 plugin ecosystem"),
+            ["Atlas"] = new("Nekkoy", "Gordin / yokkenUA", "Endgame atlas overlay (Gordin upstream): search, pathing, content badges."),
 
-            ["Radar"] = new("Gordin", "GameHelper2"),
+            ["Radar"] = new("Gordin", "GameHelper2", "Radar overlay for entities and map awareness."),
 
-            ["RitualHelper"] = new("caio", "AutoRitualPricer lineage"),
+            ["RitualHelper"] = new("caio", "AutoRitualPricer lineage", "Ritual reward prices in the Ritual panel."),
 
-            ["RuneforgeHelper"] = new("Nekkoy", "GameHelper2 plugin ecosystem"),
+            ["RuneforgeHelper"] = new("Nekkoy", "GameHelper2 plugin ecosystem", "Runeshape prices (fork: poe2scout, DE/EN). Use only RuneforgeHelper OR RunecraftHelper."),
 
-            ["SekhemaHelper"] = new("Nekkoy", "Sekhema Trial path helper"),
+            ["RunecraftHelper"] = new("Nekkoy", "yokkenUA upstream 1:1", "Runeshape prices (upstream poe.ninja). Use only RunecraftHelper OR RuneforgeHelper."),
 
-            ["AutoPot"] = new("MordWraith", "written for this fork"),
+            ["SekhemaHelper"] = new("Nekkoy", "Sekhema Trial path helper", "Sekhema trial map pathing assistance."),
 
-            ["Autopot"] = new("MordWraith", "written for this fork"),
+            ["AutoPot"] = new("MordWraith", "written for this fork", "Automatic flask usage helper."),
 
-            ["AutoHotKeyTrigger"] = new("GameHelper2 upstream", "KronosDesign / community"),
+            ["Autopot"] = new("MordWraith", "written for this fork", "Automatic flask usage helper."),
 
-            ["HealthBars"] = new("GameHelper2 upstream", "KronosDesign / community"),
+            ["AutoHotKeyTrigger"] = new("GameHelper2 upstream", "KronosDesign / community", "Configurable hotkey triggers for in-game actions."),
 
-            ["SimpleBars"] = new("Reynbow", "Reynbow/simplebars fork"),
+            ["HealthBars"] = new("GameHelper2 upstream", "KronosDesign / community", "Custom health bars on screen."),
 
-            ["PreloadAlert"] = new("GameHelper2 upstream", "ExileAPI PreloadAlert concept"),
+            ["SimpleBars"] = new("Reynbow", "Reynbow/simplebars fork", "Lightweight on-screen health bars."),
 
-            ["AuraTracker"] = new("Skrip", "derekShaheen/AuraTracker"),
+            ["PreloadAlert"] = new("GameHelper2 upstream", "ExileAPI PreloadAlert concept", "Alerts for preloaded map areas."),
 
-            ["MapKillCounter"] = new("MordWraith", "written for this fork"),
+            ["AuraTracker"] = new("Skrip", "derekShaheen/AuraTracker", "Tracks player auras and reservation."),
 
-            ["AmanamuVoidAlert"] = new("1k4ru5g3", "POEFixer AmanamuVoidAlertPlugin port"),
+            ["MapKillCounter"] = new("MordWraith", "written for this fork", "Kill counter for the current map."),
 
-            ["PlayerBuffBar"] = new("MordWraith", "written for this fork"),
+            ["FarmTracker"] = new("Senbry", "ported by MordWraith for this fork", "Farm tracker: loot profit, kills, maps, session stats."),
+
+            ["AmanamuVoidAlert"] = new("1k4ru5g3", "POEFixer AmanamuVoidAlertPlugin port", "Alerts for Amanamu void mechanics."),
+
+            ["PlayerBuffBar"] = new("MordWraith", "written for this fork", "Compact player buff display."),
+
+            ["Wraedar"] = new("Wraedar upstream", "Wraedar map tools", "Map pins, tiles, and navigation helpers."),
 
         };
 
@@ -76,10 +82,73 @@ namespace GameHelper.Plugin
 
 
 
-        private readonly record struct PluginCreditInfo(string Author, string Notes);
+        internal static string GetCatalogDescription(string pluginName)
+
+        {
+
+            if (!Credits.TryGetValue(pluginName, out var credit))
+
+            {
+
+                return string.Empty;
+
+            }
+
+            if (!string.IsNullOrWhiteSpace(credit.CatalogDescription))
+
+            {
+
+                return credit.CatalogDescription;
+
+            }
+
+            return credit.Notes;
+
+        }
+
+
+
+        internal static string GetUpstreamSourceUrl(string pluginName) =>
+
+            UpstreamSourceUrls.TryGetValue(pluginName, out var url)
+
+                ? url
+
+                : string.Empty;
+
+
+
+        private static readonly Dictionary<string, string> UpstreamSourceUrls = new(StringComparer.OrdinalIgnoreCase)
+
+        {
+
+            ["Atlas"] = "https://github.com/Gordin/GameHelper2/tree/main/Plugins/Atlas",
+
+            ["AutoHotKeyTrigger"] = "https://github.com/Gordin/GameHelper2",
+
+            ["AuraTracker"] = "https://github.com/derekShaheen/AuraTracker",
+
+            ["AmanamuVoidAlert"] = "https://github.com/1k4ru5g3/AmanamuVoidAlertPlugin",
+
+            ["RitualHelper"] = "https://github.com/Queuete/GameHelper",
+
+            ["RuneforgeHelper"] = "https://github.com/yokkenUA/RunecraftHelper",
+
+            ["RunecraftHelper"] = "https://github.com/yokkenUA/RunecraftHelper",
+
+            ["SekhemaHelper"] = "https://github.com/yokkenUA/SekhemaHelper",
+
+            ["SimpleBars"] = "https://github.com/Reynbow/simplebars",
+
+            ["Wraedar"] = "https://github.com/diesal/Wraedar",
+
+        };
+
+
+
+        private readonly record struct PluginCreditInfo(string Author, string Notes, string CatalogDescription = "");
 
     }
 
 }
-
 
