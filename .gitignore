@@ -30,7 +30,12 @@ Plugins/SimpleBars/bin/
 Plugins/SimpleBars/obj/
 Plugins/MapKillCounter/bin/
 Plugins/MapKillCounter/obj/
-Plugins/RunecraftHelper/
+Plugins/FarmTracker/bin/
+Plugins/FarmTracker/obj/
+Plugins/Hiveblood/bin/
+Plugins/Hiveblood/obj/
+Plugins/RunecraftHelper/bin/
+Plugins/RunecraftHelper/obj/
 
 # Alte Deployment-Binaerdateien im Root
 /*.exe
@@ -51,6 +56,14 @@ github.config.json
 Plugins/**/_tmp_*
 Plugins/**/Fehler.txt
 Plugins/**/Textdokument*.txt
+
+# Runtime logs / error dumps (never commit)
+*.log
+**/errorlog*.txt
+**/ErrorLog*.txt
+**/crash*.txt
+player_status_effect.txt
+**/player_status_effect.txt
 
 # Secrets
 *.token
