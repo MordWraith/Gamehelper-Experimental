@@ -35,7 +35,7 @@ Open **Plugins** in the GameHelper menu (top bar). The plugin table shows each p
 | RitualHelper | caio | Based on AutoRitualPricer ([Queuete/GameHelper](https://github.com/Queuete/GameHelper) lineage) |
 | RuneforgeHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/RunecraftHelper) | Runeshape rewards overlay (fork) |
 | RunecraftHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/RunecraftHelper) | Runeshape rewards overlay (upstream 1:1) |
-| SekhemaHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/SekhemaHelper) | Sekhema Trial option helper |
+| SekhemaHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/SekhemaHelper) (synced **v0.0.3**) | Sekhema Trial path helper; room read from FloorData content vector |
 | AutoPot | MordWraith | Written for this fork |
 | AutoHotKeyTrigger | GameHelper2 upstream | Bundled with GameHelper2 |
 | HealthBars | GameHelper2 upstream | Bundled with GameHelper2 |

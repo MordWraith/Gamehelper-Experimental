@@ -36,7 +36,7 @@ namespace GameHelper.Plugin
 
             ["RunecraftHelper"] = new("Nekkoy", "yokkenUA upstream 1:1", "Runeshape prices (upstream poe.ninja). Use only RunecraftHelper OR RuneforgeHelper."),
 
-            ["SekhemaHelper"] = new("Nekkoy", "Sekhema Trial path helper", "Sekhema trial map pathing assistance."),
+            ["SekhemaHelper"] = new("Nekkoy", "yokkenUA/SekhemaHelper v0.0.3", "Sekhema trial pathing; room classification from FloorData content vector."),
 
             ["AutoPot"] = new("MordWraith", "written for this fork", "Automatic flask usage helper."),
 
