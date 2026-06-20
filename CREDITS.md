@@ -1,11 +1,11 @@
 # Credits
 
-GameHelper is an **open-source fork** for Path of Exile 2, based on the [GameHelper2](https://github.com/Gordin/GameHelper2) ecosystem.
+GameHelper is an **open-source fork** for Path of Exile 2, based on the [GameHelper2](https://github.com/MordWraith/Gamehelper-Experimental) ecosystem.
 
 | What | Where |
 |------|--------|
-| **Source code** | https://github.com/MordWraith/Gamehelper (`main` branch) |
-| **Pre-built releases** | https://github.com/MordWraith/Gamehelper/releases |
+| **Source code** | https://github.com/MordWraith/Gamehelper-Experimental (`main` branch) |
+| **Pre-built releases** | https://github.com/MordWraith/Gamehelper-Experimental/releases |
 | **Trust / auto-update** | [SECURITY.md](SECURITY.md) |
 
 **Maintainer:** [MordWraith](https://github.com/MordWraith)
@@ -21,7 +21,7 @@ Open **Plugins** in the GameHelper menu (top bar). The plugin table shows each p
 | Component | Credit | Notes |
 |-----------|--------|-------|
 | Fork basis | Lafko / Gordin | Starting point for this project (GameHelper2 lineage) |
-| GameHelper2 base | [Gordin](https://github.com/Gordin/GameHelper2) and community | Overlay architecture, offsets, plugin host |
+| GameHelper2 base | [Gordin](https://github.com/MordWraith/Gamehelper-Experimental) and community | Overlay architecture, offsets, plugin host |
 | GameHelper (original) | GameHelper (OwnedCore) | Early PoE helper lineage |
 | Community maintainers | KronosDesign, arsenic2k, abevol, mm3141, others | GameHelper2 contributions |
 | This fork | MordWraith | PoE2 updates, launcher, signed auto-update, plugins, publish pipeline |
@@ -30,19 +30,22 @@ Open **Plugins** in the GameHelper menu (top bar). The plugin table shows each p
 
 | Plugin | Author / upstream | Notes |
 |--------|-------------------|-------|
-| Atlas | Nekkoy / [yokkenUA](https://github.com/yokkenUA/Atlas) | GameHelper2 plugin ecosystem |
+| Atlas | Nekkoy / [yokkenUA](https://github.com/MordWraith/Gamehelper-Experimental) (synced **v0.1.3**) | Chevron routes, hide available maps, expedition targets, universal font, content icons |
 | Radar | Gordin | GameHelper2 |
-| RitualHelper | caio | Based on AutoRitualPricer ([Queuete/GameHelper](https://github.com/Queuete/GameHelper) lineage) |
-| RuneforgeHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/RunecraftHelper) | Runeshape rewards overlay |
-| SekhemaHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/SekhemaHelper) | Sekhema Trial option helper |
+| RitualHelper | caio | Based on AutoRitualPricer ([Queuete/GameHelper](https://github.com/MordWraith/Gamehelper-Experimental) lineage) |
+| RuneforgeHelper | Nekkoy / [yokkenUA](https://github.com/MordWraith/Gamehelper-Experimental) | Runeshape rewards overlay (fork) |
+| RunecraftHelper | Nekkoy / [yokkenUA](https://github.com/MordWraith/Gamehelper-Experimental) | Runeshape rewards overlay (upstream 1:1) |
+| SekhemaHelper | Nekkoy / [yokkenUA](https://github.com/MordWraith/Gamehelper-Experimental) | Sekhema Trial option helper |
 | AutoPot | MordWraith | Written for this fork |
 | AutoHotKeyTrigger | GameHelper2 upstream | Bundled with GameHelper2 |
 | HealthBars | GameHelper2 upstream | Bundled with GameHelper2 |
-| SimpleBars | [Reynbow](https://github.com/Reynbow/simplebars) | Simpler HealthBars fork (gradient bars, circle-dot mode) |
-| PreloadAlert | GameHelper2 upstream | Concept from [TehCheat/PreloadAlert](https://github.com/TehCheat/PreloadAlert) |
-| AuraTracker | Skrip / [derekShaheen](https://github.com/derekShaheen/AuraTracker) | Nearby enemy list with HP/ES, buffs, DPS |
-| MapKillCounter | MordWraith | Per-map monster kill counts |
-| AmanamuVoidAlert | [1k4ru5g3](https://github.com/1k4ru5g3/AmanamuVoidAlertPlugin) | Abyss / Amanamu void cloud tracker |
+| SimpleBars | [Reynbow](https://github.com/MordWraith/Gamehelper-Experimental) / [MordWraith](https://github.com/MordWraith/Gamehelper-Experimental) | Simpler HealthBars fork (gradient bars, circle-dot mode) |
+| PreloadAlert | GameHelper2 upstream | Concept from [TehCheat/PreloadAlert](https://github.com/MordWraith/Gamehelper-Experimental) |
+| AuraTracker | Skrip / [MordWraith](https://github.com/MordWraith/Gamehelper-Experimental) | Nearby enemy list with HP/ES, buffs, DPS |
+| MapKillCounter | [MordWraith](https://github.com/MordWraith/Gamehelper-Experimental) | Per-map monster kill counts |
+| FarmTracker | Senbry / [MordWraith](https://github.com/MordWraith/Gamehelper-Experimental) | Farm session tracker (GameHelper2 port) |
+| Hiveblood | MordWraith | Genesis Tree Hiveblood tracker (PoE2) |
+| AmanamuVoidAlert | [1k4ru5g3](https://github.com/MordWraith/Gamehelper-Experimental) / [MordWraith](https://github.com/MordWraith/Gamehelper-Experimental) | Abyss / Amanamu void cloud tracker |
 | PlayerBuffBar | MordWraith | Player buff watchlist, charges, rage |
 
 ## Third-party libraries
