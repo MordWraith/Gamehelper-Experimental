@@ -31,29 +31,53 @@ namespace Downloader
 
             {
 
-              "Atlas": { "Enable": true, "AutoStart": true },
-
-              "AutoHotKeyTrigger": { "Enable": false, "AutoStart": false },
+              "AutoPot": { "Enable": true, "AutoStart": true },
 
               "HealthBars": { "Enable": true, "AutoStart": true },
 
-              "PreloadAlert": { "Enable": false, "AutoStart": false },
-
               "Radar": { "Enable": true, "AutoStart": true },
 
-              "RitualHelper": { "Enable": true, "AutoStart": true },
+              "PreloadAlert": { "Enable": false, "AutoStart": false },
 
-              "RuneforgeHelper": { "Enable": true, "AutoStart": true },
+              "Atlas": { "Enable": false, "AutoStart": false },
 
-              "SekhemaHelper": { "Enable": true, "AutoStart": true },
+              "AutoHotKeyTrigger": { "Enable": false, "AutoStart": false },
 
-              "AuraTracker": { "Enable": true, "AutoStart": true },
+              "AuraTracker": { "Enable": false, "AutoStart": false },
 
-              "MapKillCounter": { "Enable": true, "AutoStart": true },
+              "MapKillCounter": { "Enable": false, "AutoStart": false },
 
-              "PlayerBuffBar": { "Enable": true, "AutoStart": true },
+              "FarmTracker": { "Enable": false, "AutoStart": false },
 
-              "SimpleBars": { "Enable": false, "AutoStart": false }
+              "AmanamuVoidAlert": { "Enable": false, "AutoStart": false },
+
+              "PlayerBuffBar": { "Enable": false, "AutoStart": false },
+
+              "RitualHelper": { "Enable": false, "AutoStart": false },
+
+              "RuneforgeHelper": { "Enable": false, "AutoStart": false },
+
+              "RunecraftHelper": { "Enable": false, "AutoStart": false },
+
+              "SekhemaHelper": { "Enable": false, "AutoStart": false },
+
+              "Hiveblood": { "Enable": false, "AutoStart": false },
+
+              "SimpleBars": { "Enable": false, "AutoStart": false },
+
+              "Wraedar": { "Enable": false, "AutoStart": false }
+
+            }
+
+            """;
+
+        private const string DefaultInstalledPluginsJson = """
+
+            {
+
+              "schema": 1,
+
+              "optional": {}
 
             }
 
@@ -107,10 +131,11 @@ namespace Downloader
 
             IProgress<string>? log,
 
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+
+            bool preferFullPackage = false)
 
         {
-
             targetDir = Path.GetFullPath(targetDir);
 
             if (Directory.Exists(targetDir) &&
@@ -136,6 +161,10 @@ namespace Downloader
 
 
             Directory.CreateDirectory(targetDir);
+
+
+
+            log?.Report($"{DownloaderLocalization.B("Repository", "Repository")}: {UpdateRepositoryConfig.Repository}");
 
 
 
@@ -209,7 +238,7 @@ namespace Downloader
 
 
 
-            if (UpdateZipPackage.TryRead(manifest, out var zipPackage))
+            if (UpdateZipPackage.TryResolveDownloadPackage(manifest, preferFullPackage, out var zipPackage))
 
             {
 
@@ -225,9 +254,9 @@ namespace Downloader
 
                     log?.Report(DownloaderLocalization.B(
 
-                        "Downloading full package ...",
+                        preferFullPackage ? "Downloading full package ..." : "Downloading core package ...",
 
-                        "Lade Vollstaendiges Paket ..."));
+                        preferFullPackage ? "Lade Vollstaendiges Paket ..." : "Lade Core-Paket ..."));
 
                     await this.DownloadFileAsync(url, zipPath, cancellationToken).ConfigureAwait(false);
 
@@ -452,11 +481,17 @@ namespace Downloader
 
 
 
+            await this.EnsureInstalledPluginsStateAsync(targetDir, cancellationToken).ConfigureAwait(false);
+
+            await this.TryDownloadPluginsCatalogAsync(manifest, version!, targetDir, log, cancellationToken).ConfigureAwait(false);
+
+
+
             UpdateFileHashesCatalog.SaveFromManifest(targetDir, manifest);
 
             UpdateStateHelper.Save(targetDir, published ?? string.Empty, version!,
 
-                UpdateZipPackage.TryRead(manifest, out var pkg) ? pkg.Hash : null);
+                UpdateZipPackage.TryResolveDownloadPackage(manifest, preferFullPackage, out var installedPkg) ? installedPkg.Hash : null);
 
 
 
@@ -481,6 +516,124 @@ namespace Downloader
 
 
             return DownloadResult.Ok(targetDir, version!);
+
+        }
+
+
+
+        private async Task EnsureInstalledPluginsStateAsync(string targetDir, CancellationToken cancellationToken)
+
+        {
+
+            var path = Path.Combine(targetDir, "configs", "installed-plugins.json");
+
+            if (File.Exists(path))
+
+            {
+
+                return;
+
+            }
+
+
+
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+            await File.WriteAllTextAsync(path, DefaultInstalledPluginsJson, cancellationToken).ConfigureAwait(false);
+
+        }
+
+
+
+        private async Task TryDownloadPluginsCatalogAsync(
+
+            JObject manifest,
+
+            string version,
+
+            string targetDir,
+
+            IProgress<string>? log,
+
+            CancellationToken cancellationToken)
+
+        {
+
+            if (manifest["pluginsCatalog"] is not JObject catalogMeta)
+
+            {
+
+                return;
+
+            }
+
+
+
+            var catalogName = catalogMeta["name"]?.ToString();
+
+            var catalogHash = catalogMeta["hash"]?.ToString();
+
+            if (string.IsNullOrWhiteSpace(catalogName) || string.IsNullOrWhiteSpace(catalogHash))
+
+            {
+
+                return;
+
+            }
+
+
+
+            var catalogPath = Path.Combine(targetDir, catalogName);
+
+            var catalogSigPath = Path.Combine(targetDir, $"{Path.GetFileNameWithoutExtension(catalogName)}.sig");
+
+            try
+
+            {
+
+                var url = DownloadConfig.FileDownloadUrl(version, catalogName);
+
+                log?.Report(DownloaderLocalization.B(
+
+                    "Downloading plugins catalog ...",
+
+                    "Lade Plugin-Katalog ..."));
+
+                await this.DownloadFileAsync(url, catalogPath, cancellationToken).ConfigureAwait(false);
+
+                var actualHash = ComputeSha256(catalogPath);
+
+                if (!actualHash.Equals(catalogHash, StringComparison.OrdinalIgnoreCase))
+
+                {
+
+                    throw new InvalidOperationException(DownloaderLocalization.B(
+
+                        $"Plugins catalog hash mismatch (got {actualHash}, expected {catalogHash})",
+
+                        $"Plugin-Katalog Hash stimmt nicht (ist {actualHash}, erwartet {catalogHash})"));
+
+                }
+
+
+
+                var sigUrl = DownloadConfig.FileDownloadUrl(version, Path.GetFileName(catalogSigPath));
+
+                await this.DownloadFileAsync(sigUrl, catalogSigPath, cancellationToken).ConfigureAwait(false);
+
+            }
+
+            catch (Exception ex)
+
+            {
+
+                log?.Report(DownloaderLocalization.B(
+
+                    $"Plugins catalog skipped: {ex.Message}",
+
+                    $"Plugin-Katalog uebersprungen: {ex.Message}"));
+
+            }
 
         }
 
@@ -619,6 +772,10 @@ namespace Downloader
         internal static DownloadResult Fail(int exitCode, string message) =>
 
             new() { ExitCode = exitCode, Message = message };
+
+        internal static DownloadResult PluginActionOk(string targetDir, string message) =>
+
+            new() { ExitCode = 0, TargetDir = targetDir, Message = message };
 
     }
 

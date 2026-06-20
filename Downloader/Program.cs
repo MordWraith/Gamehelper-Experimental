@@ -11,7 +11,10 @@ namespace Downloader
         private static int Main(string[] args)
         {
             var force = false;
+            var preferFullPackage = false;
             string? targetDir = null;
+            string? installPlugin = null;
+            string? removePlugin = null;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -22,10 +25,44 @@ namespace Downloader
                     continue;
                 }
 
+                if (arg is "--full")
+                {
+                    preferFullPackage = true;
+                    continue;
+                }
+
                 if (arg is "--help" or "-h" or "/?")
                 {
                     PrintHelp();
                     return 0;
+                }
+
+                if (arg is "--install-plugin")
+                {
+                    if (i + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine(DownloaderLocalization.B(
+                            "Missing value for --install-plugin",
+                            "Fehlender Wert fuer --install-plugin"));
+                        return 1;
+                    }
+
+                    installPlugin = args[++i];
+                    continue;
+                }
+
+                if (arg is "--remove-plugin")
+                {
+                    if (i + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine(DownloaderLocalization.B(
+                            "Missing value for --remove-plugin",
+                            "Fehlender Wert fuer --remove-plugin"));
+                        return 1;
+                    }
+
+                    removePlugin = args[++i];
+                    continue;
                 }
 
                 if (arg is "--target" or "-t")
@@ -48,25 +85,70 @@ namespace Downloader
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(targetDir))
+            if (!string.IsNullOrWhiteSpace(installPlugin) && !string.IsNullOrWhiteSpace(removePlugin))
             {
-                targetDir = PromptForTargetDirectory()
-                    ?? Path.Combine(AppContext.BaseDirectory, "GameHelper");
+                Console.Error.WriteLine(DownloaderLocalization.B(
+                    "Use either --install-plugin or --remove-plugin, not both.",
+                    "Entweder --install-plugin oder --remove-plugin verwenden, nicht beides."));
+                return 1;
             }
 
-            Console.WriteLine("=== GameHelper Download ===");
-            Console.WriteLine($"{DownloaderLocalization.B("Target folder", "Zielordner")}: {Path.GetFullPath(targetDir)}");
+            var pluginAction = !string.IsNullOrWhiteSpace(installPlugin) || !string.IsNullOrWhiteSpace(removePlugin);
+            if (pluginAction && preferFullPackage)
+            {
+                Console.Error.WriteLine(DownloaderLocalization.B(
+                    "--full cannot be combined with plugin install/remove.",
+                    "--full kann nicht mit Plugin-Install/Remove kombiniert werden."));
+                return 1;
+            }
+
+            if (string.IsNullOrWhiteSpace(targetDir))
+            {
+                targetDir = pluginAction
+                    ? ResolveExistingInstallDirectory()
+                    : PromptForTargetDirectory() ?? Path.Combine(AppContext.BaseDirectory, "GameHelper");
+            }
+
+            if (pluginAction && string.IsNullOrWhiteSpace(targetDir))
+            {
+                Console.Error.WriteLine(DownloaderLocalization.B(
+                    "Specify the GameHelper folder with --target or run from the install directory.",
+                    "GameHelper-Ordner mit --target angeben oder im Installationsordner starten."));
+                return 1;
+            }
+
+            Console.WriteLine(pluginAction
+                ? "=== GameHelper Plugin Manager ==="
+                : "=== GameHelper Download ===");
+            Console.WriteLine($"{DownloaderLocalization.B("Target folder", "Zielordner")}: {Path.GetFullPath(targetDir!)}");
             Console.WriteLine();
 
-            var service = new GameHelperDownloadService();
             var progress = new Progress<string>(line => Console.WriteLine(line));
-
             DownloadResult result;
+
             try
             {
-                result = service.DownloadAsync(targetDir, force, progress, CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
+                if (!string.IsNullOrWhiteSpace(installPlugin))
+                {
+                    result = new PluginPackageService()
+                        .InstallPluginAsync(targetDir!, installPlugin, progress, CancellationToken.None)
+                        .GetAwaiter()
+                        .GetResult();
+                }
+                else if (!string.IsNullOrWhiteSpace(removePlugin))
+                {
+                    result = new PluginPackageService()
+                        .RemovePluginAsync(targetDir!, removePlugin, progress, CancellationToken.None)
+                        .GetAwaiter()
+                        .GetResult();
+                }
+                else
+                {
+                    result = new GameHelperDownloadService()
+                        .DownloadAsync(targetDir!, force, progress, CancellationToken.None, preferFullPackage)
+                        .GetAwaiter()
+                        .GetResult();
+                }
             }
             catch (Exception ex)
             {
@@ -88,16 +170,38 @@ namespace Downloader
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine(DownloaderLocalization.B(
-                "Done. GameHelper is installed in:",
-                "Fertig. GameHelper liegt in:"));
-            Console.WriteLine($"  {result.TargetDir}");
+            if (pluginAction)
+            {
+                Console.WriteLine(result.Message);
+            }
+            else
+            {
+                Console.WriteLine(DownloaderLocalization.B(
+                    "Done. GameHelper is installed in:",
+                    "Fertig. GameHelper liegt in:"));
+                Console.WriteLine($"  {result.TargetDir}");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine(DownloaderLocalization.B("Start with:", "Starten mit:"));
+                Console.WriteLine($"  {Path.Combine(result.TargetDir!, "GameHelper.exe")}");
+            }
+
             Console.ResetColor();
-            Console.WriteLine();
-            Console.WriteLine(DownloaderLocalization.B("Start with:", "Starten mit:"));
-            Console.WriteLine($"  {Path.Combine(result.TargetDir!, "GameHelper.exe")}");
             WaitForKey();
             return 0;
+        }
+
+        private static string? ResolveExistingInstallDirectory()
+        {
+            foreach (var candidate in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+            {
+                if (File.Exists(Path.Combine(candidate, "GameHelper.exe")))
+                {
+                    return Path.GetFullPath(candidate);
+                }
+            }
+
+            return null;
         }
 
         private static string? PromptForTargetDirectory()
@@ -129,12 +233,19 @@ namespace Downloader
             Console.WriteLine("GameHelperDownloader");
             Console.WriteLine();
             Console.WriteLine(DownloaderLocalization.B("Usage:", "Verwendung:"));
-            Console.WriteLine("  GameHelperDownloader.exe [target folder] [--force]");
-            Console.WriteLine("  GameHelperDownloader.exe --target \"D:\\Games\\GameHelper\"");
+            Console.WriteLine("  GameHelperDownloader.exe [target folder] [--force] [--full]");
+            Console.WriteLine("  GameHelperDownloader.exe --target \"D:\\Games\\GameHelper\" --install-plugin Atlas");
+            Console.WriteLine("  GameHelperDownloader.exe --target \"D:\\Games\\GameHelper\" --remove-plugin Atlas");
             Console.WriteLine();
             Console.WriteLine(DownloaderLocalization.B(
                 "Without target folder: folder picker dialog, otherwise .\\GameHelper",
                 "Ohne Zielordner: Ordnerauswahl-Dialog, sonst .\\GameHelper"));
+            Console.WriteLine(DownloaderLocalization.B(
+                "Plugin commands use an existing install folder (or current directory if GameHelper.exe is there).",
+                "Plugin-Befehle nutzen einen bestehenden Installationsordner (oder aktuelles Verzeichnis mit GameHelper.exe)."));
+            Console.WriteLine(DownloaderLocalization.B(
+                "--full downloads the complete package with all plugins (default is core only).",
+                "--full laedt das Vollstaendige Paket mit allen Plugins (Standard ist nur Core)."));
         }
 
         private static void WaitForKey()

@@ -26,7 +26,7 @@ namespace GameHelper.Plugin
 
         {
 
-            ["Atlas"] = new("Nekkoy", "Gordin / yokkenUA", "Endgame atlas overlay (Gordin upstream): search, pathing, content badges."),
+            ["Atlas"] = new("Nekkoy", "yokkenUA/Atlas v0.1.3", "Endgame atlas overlay: chevron routes, hide available maps, expedition targets, content icons."),
 
             ["Radar"] = new("Gordin", "GameHelper2", "Radar overlay for entities and map awareness."),
 
@@ -46,19 +46,21 @@ namespace GameHelper.Plugin
 
             ["HealthBars"] = new("GameHelper2 upstream", "KronosDesign / community", "Custom health bars on screen."),
 
-            ["SimpleBars"] = new("Reynbow", "Reynbow/simplebars fork", "Lightweight on-screen health bars."),
+            ["SimpleBars"] = new("Reynbow", "MordWraith/SimpleBars port", "Lightweight on-screen health bars."),
 
             ["PreloadAlert"] = new("GameHelper2 upstream", "ExileAPI PreloadAlert concept", "Alerts for preloaded map areas."),
 
-            ["AuraTracker"] = new("Skrip", "derekShaheen/AuraTracker", "Tracks player auras and reservation."),
+            ["AuraTracker"] = new("Skrip", "MordWraith/AuraTracker port", "Nearby enemies: HP/ES, buffs, DPS panel."),
 
-            ["MapKillCounter"] = new("MordWraith", "written for this fork", "Kill counter for the current map."),
+            ["MapKillCounter"] = new("MordWraith", "MordWraith/MapKillCounter", "Kill counter for the current map and session."),
 
             ["FarmTracker"] = new("Senbry", "ported by MordWraith for this fork", "Farm tracker: loot profit, kills, maps, session stats."),
 
-            ["AmanamuVoidAlert"] = new("1k4ru5g3", "POEFixer AmanamuVoidAlertPlugin port", "Alerts for Amanamu void mechanics."),
+            ["AmanamuVoidAlert"] = new("1k4ru5g3", "MordWraith/AmanamuVoidAlert port", "Abyss / Amanamu void cloud tracker."),
 
             ["PlayerBuffBar"] = new("MordWraith", "written for this fork", "Compact player buff display."),
+
+            ["Hiveblood"] = new("MordWraith", "written for this fork", "Genesis Tree Hiveblood tracker with inventory overlay (PoE2)."),
 
             ["Wraedar"] = new("Wraedar upstream", "Wraedar map tools", "Map pins, tiles, and navigation helpers."),
 
@@ -122,13 +124,17 @@ namespace GameHelper.Plugin
 
         {
 
-            ["Atlas"] = "https://github.com/Gordin/GameHelper2/tree/main/Plugins/Atlas",
+            ["Atlas"] = "https://github.com/yokkenUA/Atlas",
 
             ["AutoHotKeyTrigger"] = "https://github.com/Gordin/GameHelper2",
 
-            ["AuraTracker"] = "https://github.com/derekShaheen/AuraTracker",
+            ["AuraTracker"] = "https://github.com/MordWraith/AuraTracker",
 
-            ["AmanamuVoidAlert"] = "https://github.com/1k4ru5g3/AmanamuVoidAlertPlugin",
+            ["AmanamuVoidAlert"] = "https://github.com/MordWraith/AmanamuVoidAlert",
+
+            ["MapKillCounter"] = "https://github.com/MordWraith/MapKillCounter",
+
+            ["FarmTracker"] = "https://github.com/MordWraith/FarmTracker",
 
             ["RitualHelper"] = "https://github.com/Queuete/GameHelper",
 
@@ -138,7 +144,7 @@ namespace GameHelper.Plugin
 
             ["SekhemaHelper"] = "https://github.com/yokkenUA/SekhemaHelper",
 
-            ["SimpleBars"] = "https://github.com/Reynbow/simplebars",
+            ["SimpleBars"] = "https://github.com/MordWraith/SimpleBars",
 
             ["Wraedar"] = "https://github.com/diesal/Wraedar",
 

@@ -28,6 +28,51 @@ namespace Shared.UpdateSecurity
                 return false;
             }
 
+            return TryReadPackageObject(obj, out package);
+        }
+
+        public static bool TryReadNamedPackage(JObject manifest, string packageName, out PackageInfo package)
+        {
+            package = null!;
+            if (manifest["packages"] is not JObject packages)
+            {
+                return false;
+            }
+
+            if (packages[packageName] is not JObject obj)
+            {
+                return false;
+            }
+
+            return TryReadPackageObject(obj, out package);
+        }
+
+        public static bool TryResolveDownloadPackage(JObject manifest, bool preferFull, out PackageInfo package)
+        {
+            if (preferFull)
+            {
+                if (TryReadNamedPackage(manifest, "full", out package) ||
+                    TryRead(manifest, out package))
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                if (TryReadNamedPackage(manifest, "core", out package) ||
+                    TryRead(manifest, out package))
+                {
+                    return true;
+                }
+            }
+
+            package = null!;
+            return false;
+        }
+
+        private static bool TryReadPackageObject(JObject obj, out PackageInfo package)
+        {
+            package = null!;
             var name = obj["name"]?.ToString();
             var hash = obj["hash"]?.ToString();
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(hash))

@@ -17,6 +17,7 @@ namespace GameHelper.Plugin
     using Newtonsoft.Json.Linq;
     using CTOUtils = ClickableTransparentOverlay.Win32.Utils;
     using Settings;
+    using Shared.PluginPackages;
     using Ui;
     using Utils;
 
@@ -40,6 +41,7 @@ namespace GameHelper.Plugin
         /// </summary>
         internal static void InitializePlugins()
         {
+            PluginPackageManager.ApplyPendingRemovals(AppContext.BaseDirectory);
             State.PluginsDirectory.Create(); // doesn't do anything if already exists.
             LoadPluginMetadata(LoadPlugins());
 #if DEBUG
@@ -89,6 +91,7 @@ namespace GameHelper.Plugin
                 PluginNames.Add(plugin.Name);
             }
         }
+#endif
 
         /// <summary>
         ///     Cleans up the already loaded plugins.
@@ -114,21 +117,13 @@ namespace GameHelper.Plugin
                 Plugins.Remove(target);
             }
 
-            // F-075: actually unload the assembly via the collectible ALC tracked
-            // in the PluginContainer (F-074 made the ALC collectible).
+            SortPlugins();
+
             var alcRef = new WeakReference(target.Alc);
             target.Alc.Unload();
-
-            // Release the strong reference to the PluginContainer (and its Alc field)
-            // BEFORE the GC loop. The .NET docs require this — without it, the JIT
-            // can keep `target` rooted across the loop and alcRef.IsAlive stays true
-            // forever (spurious warning log). See:
-            // https://learn.microsoft.com/en-us/dotnet/standard/assembly/unloadability
             target = null;
 
-            // Run GC repeatedly until the ALC is unreachable (or we give up after
-            // 10 attempts).
-            for (var i = 0; i < 10 && alcRef.IsAlive; i++)
+            for (var i = 0; i < 2 && alcRef.IsAlive; i++)
             {
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
@@ -146,29 +141,46 @@ namespace GameHelper.Plugin
         {
             try
             {
-                var container = GetPluginsDirectories()
-                                .Where(x => x.Name.Contains(name))
-                                .Select(LoadPlugin)
-                                .Where(y => y != null)
-                                .Select(y => y!)
-                                .ToList();
-                if (container.Count > 0)
+                lock (Plugins)
                 {
-                    LoadPluginMetadata(container);
-                    container[0].Plugin.OnEnable(Core.Process.Address != IntPtr.Zero);
-                    return true;
+                    if (Plugins.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return true;
+                    }
                 }
-                else
+
+                var pluginWithName = GetPluginsDirectories()
+                    .Where(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
+                    .Select(LoadPlugin)
+                    .FirstOrDefault(x => x != null);
+                if (pluginWithName == null)
                 {
                     return false;
                 }
+
+                var metadata = LoadPluginsMetadataDictionary();
+                var container = new PluginContainer(
+                    pluginWithName.Name,
+                    pluginWithName.Plugin,
+                    metadata.GetValueOrDefault(pluginWithName.Name, new PluginMetadata()),
+                    pluginWithName.Alc);
+
+                lock (Plugins)
+                {
+                    Plugins.Add(container);
+                }
+
+                SortPlugins();
+                EnablePluginIfRequired(container);
+                SavePluginMetadata();
+                return true;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[PManager.LoadPlugin] {name}: {ex.Message}");
                 return false;
             }
         }
-#endif
 
         private static List<DirectoryInfo> GetPluginsDirectories()
         {
@@ -321,11 +333,6 @@ namespace GameHelper.Plugin
                     };
                 }
 
-                if (result.Remove("RunecraftHelper", out var legacyRunecraft) && !result.ContainsKey("RuneforgeHelper"))
-                {
-                    result["RuneforgeHelper"] = legacyRunecraft;
-                }
-
                 if (result.Remove("Autopot", out var legacyAutopot) && !result.ContainsKey("AutoPot"))
                 {
                     result["AutoPot"] = legacyAutopot;
@@ -357,7 +364,21 @@ namespace GameHelper.Plugin
                 Plugins.AddRange(newContainers);
             }
 
+            SortPlugins();
             SavePluginMetadata();
+        }
+
+        internal static void SortPlugins()
+        {
+            lock (Plugins)
+            {
+                if (Plugins.Count < 2)
+                {
+                    return;
+                }
+
+                Plugins.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+            }
         }
 
         private static void EnablePluginIfRequired(PluginContainer container)
@@ -396,7 +417,15 @@ namespace GameHelper.Plugin
                 meta.Enable = meta.AutoStart;
             }
 
-            JsonHelper.SafeToFile(snapshot, State.PluginsMetadataFile);
+            // Merge with on-disk entries so temporarily unloaded plugins (e.g. during
+            // plugin-store update) keep their AutoStart/Enable flags.
+            var merged = LoadPluginsMetadataDictionary();
+            foreach (var pair in snapshot)
+            {
+                merged[pair.Key] = pair.Value;
+            }
+
+            JsonHelper.SafeToFile(merged, State.PluginsMetadataFile);
         }
 
         private static IEnumerator<Wait> SavePluginMetadataCoroutine()
