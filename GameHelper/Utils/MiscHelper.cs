@@ -189,6 +189,77 @@ namespace GameHelper.Utils
             return true;
         }
 
+        /// <summary>
+        ///     Sends ESC as a single key-down (no key-up). A full tap toggles the PoE pause menu
+        ///     twice (open + close); key-up alone is ignored by the game.
+        /// </summary>
+        /// <param name="source">optional label for the activity log.</param>
+        /// <returns><see langword="true"/> when the key-down was sent.</returns>
+        public static bool TrySendEscapeKeyDown(string? source = null)
+        {
+            var label = string.IsNullOrWhiteSpace(source) ? "GameHelper" : source.Trim();
+
+            if (Core.GHSettings.EnableControllerMode || chatSequenceReserved)
+            {
+                return false;
+            }
+
+            if (Core.Process.Address == IntPtr.Zero)
+            {
+                ActivityLog.Write("Input", $"{label}: ESC not sent (game not loaded)");
+                return false;
+            }
+
+            if (!Core.Process.Foreground)
+            {
+                return false;
+            }
+
+            var hwnd = Core.Process.Information.MainWindowHandle;
+            if (hwnd == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            if (IsBlockingPhysicalKeyHeld(VK.ESCAPE))
+            {
+                return false;
+            }
+
+            lock (KeySendLock)
+            {
+                if (DelayBetweenKeys.ElapsedMilliseconds < Core.GHSettings.KeyPressTimeout + Rand.Next() % 10)
+                {
+                    return false;
+                }
+
+                if (!TrySendEscapeKeyDownToWindow(hwnd))
+                {
+                    return false;
+                }
+
+                DelayBetweenKeys.Restart();
+            }
+
+            ActivityLog.Write("Input", $"{label}: ESC key-down sent to game");
+            return true;
+        }
+
+        private static bool TrySendEscapeKeyDownToWindow(IntPtr hwnd)
+        {
+            const ushort vkEscape = 0x1B;
+            var inputs = new Input[1];
+            inputs[0].type = InputKeyboard;
+            inputs[0].U.ki.wVk = vkEscape;
+            if (SendInput(1, inputs, Marshal.SizeOf<Input>()) == 1)
+            {
+                return true;
+            }
+
+            SendMessage(hwnd, WmKeydown, (int)VK.ESCAPE, 0);
+            return true;
+        }
+
         internal static bool IsChatSequenceRunning => chatSequenceReserved;
 
         /// <summary>
@@ -377,18 +448,13 @@ namespace GameHelper.Utils
 
         private static bool SendInputKeyTap(ushort virtualKey)
         {
-            var inputs = new Input[1];
+            var inputs = new Input[2];
             inputs[0].type = InputKeyboard;
             inputs[0].U.ki.wVk = virtualKey;
-            if (SendInput(1, inputs, Marshal.SizeOf<Input>()) != 1)
-            {
-                return false;
-            }
-
-            Thread.Sleep(12 + Rand.Next() % 8);
-
-            inputs[0].U.ki.dwFlags = KeyeventfKeyup;
-            return SendInput(1, inputs, Marshal.SizeOf<Input>()) == 1;
+            inputs[1].type = InputKeyboard;
+            inputs[1].U.ki.wVk = virtualKey;
+            inputs[1].U.ki.dwFlags = KeyeventfKeyup;
+            return SendInput(2, inputs, Marshal.SizeOf<Input>()) == 2;
         }
 
         private static bool SendInputCtrlChord(ushort virtualKey)
