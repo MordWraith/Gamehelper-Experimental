@@ -46,6 +46,66 @@ internal sealed class SettingsUiRenderer
             }
         }
 
+        if (ImGui.CollapsingHeader(L("Filters", "Filter") + "###AuraTrackerFilters"))
+        {
+            ImGui.Checkbox(L("Only beasts (tamable)", "Nur Bestien (zaehmbar)"), ref settings.OnlyBeasts);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(L(
+                    "Wild / tamable beast monsters (Spirit Walker, Tame Beast). " +
+                    "Detected via monster path (Beasts, WildBeast) or wild-beast stats.",
+                    "Wilde / zaehmbare Bestien (Spirit Walker, Tame Beast). " +
+                    "Erkannt ueber Monsterpfad (Beasts, WildBeast) oder Wild-Beast-Stats."));
+            }
+
+            ImGui.Spacing();
+            ImGui.Checkbox(L("Filter by auras / buffs", "Nach Auren / Buffs filtern"), ref settings.EnableAuraFilter);
+            if (settings.EnableAuraFilter)
+            {
+                ImGui.Indent();
+                ImGui.Checkbox(L("Require ALL listed auras", "ALLE gelisteten Auren erforderlich"), ref settings.AuraFilterMatchAll);
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip(L(
+                        "Off: monster matches if it has any listed aura. On: monster must have every listed aura.",
+                        "Aus: Treffer wenn eine Aura passt. An: Monster muss jede gelistete Aura haben."));
+                }
+
+                ImGui.TextWrapped(L(
+                    "Match against the chip label (e.g. \"Frenzy\", \"Empowering\"). Case-insensitive substring.",
+                    "Abgleich mit dem Chip-Text (z. B. \"Frenzy\", \"Empowering\"). Gross-/Kleinschreibung egal."));
+
+                for (int i = 0; i < settings.AuraFilters.Count; i++)
+                {
+                    ImGui.PushID(i);
+                    ImGui.SetNextItemWidth(-70);
+                    string pattern = settings.AuraFilters[i] ?? string.Empty;
+                    if (ImGui.InputText("##aura", ref pattern, 128))
+                    {
+                        settings.AuraFilters[i] = pattern;
+                    }
+
+                    ImGui.SameLine();
+                    if (ImGui.Button(L("Remove", "Entfernen")))
+                    {
+                        settings.AuraFilters.RemoveAt(i);
+                        ImGui.PopID();
+                        i--;
+                        continue;
+                    }
+
+                    ImGui.PopID();
+                }
+
+                if (ImGui.Button(L("Add aura filter", "Aura-Filter hinzufuegen")))
+                {
+                    settings.AuraFilters.Add(string.Empty);
+                }
+
+                ImGui.Unindent();
+            }
+        }
+
         if (ImGui.CollapsingHeader(L("List Layout", "Listen-Layout") + "###AuraTrackerLayout"))
         {
             if (ImGui.BeginTable("at_layout", 2))

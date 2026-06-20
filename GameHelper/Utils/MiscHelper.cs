@@ -39,6 +39,7 @@ namespace GameHelper.Utils
         private static readonly Stopwatch DelayBetweenKeys = Stopwatch.StartNew();
         private static readonly object KeySendLock = new();
         private static Task? chatSendTask;
+        private static Task? upstreamKeyMessage;
         private static bool chatSequenceReserved;
 
         private static readonly VK[] GameplayKeys =
@@ -136,6 +137,11 @@ namespace GameHelper.Utils
         /// <returns><see langword="true"/> when the tap was sent to the focused game window.</returns>
         public static bool KeyUp(VK key, string? source = null)
         {
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                return KeyUpUpstream(key);
+            }
+
             var label = string.IsNullOrWhiteSpace(source) ? "GameHelper" : source.Trim();
 
             if (Core.GHSettings.EnableControllerMode)
@@ -186,6 +192,45 @@ namespace GameHelper.Utils
             }
 
             ActivityLog.Write("Input", $"{label}: key {key} sent to game");
+            return true;
+        }
+
+        /// <summary>
+        ///     Gordin/GameHelper2 upstream key release used by AutoHotKeyTrigger (WM_KEYUP via SendMessage).
+        /// </summary>
+        private static bool KeyUpUpstream(VK key)
+        {
+            if (Core.GHSettings.EnableControllerMode)
+            {
+                return false;
+            }
+
+            if (upstreamKeyMessage != null && !upstreamKeyMessage.IsCompleted)
+            {
+                return false;
+            }
+
+            if (DelayBetweenKeys.ElapsedMilliseconds >= Core.GHSettings.KeyPressTimeout + Rand.Next() % 10)
+            {
+                DelayBetweenKeys.Restart();
+            }
+            else
+            {
+                return false;
+            }
+
+            if (Core.Process.Address == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var hwnd = Core.Process.Information.MainWindowHandle;
+            if (hwnd == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            upstreamKeyMessage = Task.Run(() => SendMessage(hwnd, WmKeyup, (int)key, 0));
             return true;
         }
 
