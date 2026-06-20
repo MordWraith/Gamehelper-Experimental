@@ -23,6 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot "set-version.ps1")
+. (Join-Path $PSScriptRoot "publish-packages.ps1")
 
 if ($UseRootGithubConfig) {
     $configPath = Join-Path $Root "github.config.json"
@@ -33,6 +34,7 @@ if ($UseRootGithubConfig) {
 }
 
 if (-not $SkipBuild) {
+    & (Join-Path $PSScriptRoot "ensure-update-signing-key.ps1")
     $buildArgs = @{ Configuration = $Configuration }
     if (-not [string]::IsNullOrEmpty($Version)) {
         $buildArgs.Version = $Version
@@ -193,7 +195,12 @@ function New-PublishZip {
         [string]$OutputPath
     )
 
-    $zipRoot = Join-Path $env:TEMP "gamehelper-zip-$Version"
+    $zipLabel = [System.IO.Path]::GetFileNameWithoutExtension($OutputPath)
+    if ([string]::IsNullOrWhiteSpace($zipLabel)) {
+        $zipLabel = "gamehelper-$Version"
+    }
+
+    $zipRoot = Join-Path $env:TEMP "gamehelper-zip-$zipLabel"
     if (Test-Path $zipRoot) { Remove-Item $zipRoot -Recurse -Force }
     New-Item -ItemType Directory -Path $zipRoot | Out-Null
 
@@ -221,12 +228,32 @@ Copy-Item (Join-Path $Root "changelog-history.json") (Join-Path $PublishDir "cha
 
 # Paket-Inhalt erst NACH changelog-history.json berechnen (sonst Hash-Mismatch).
 $publishFiles = @(Get-PublishManifestFiles -PublishDirectory $PublishDir -ExcludePatterns $excludePatterns)
-$zipName = "GameHelper-$Version-full.zip"
-$zipPath = Join-Path $env:TEMP "gamehelper-$zipName"
-Write-Host "  Erstelle ZIP-Paket ($zipName) ..." -ForegroundColor DarkGray
-New-PublishZip -Version $Version -PublishDirectory $PublishDir -FileEntries $publishFiles -OutputPath $zipPath
-$zipHash = (Get-FileHash $zipPath -Algorithm SHA256).Hash
-$zipSize = (Get-Item $zipPath).Length
+$useComponentPackages = Test-UseComponentDistributionPackages -Root $Root -LegacyManifest:$LegacyManifest
+$distributionPackages = $null
+$pluginPackageNames = @()
+
+if ($useComponentPackages) {
+    $distributionPackages = Build-DistributionPackages -Root $Root -CoreVersion $Version -PublishDirectory $PublishDir -PublishFiles $publishFiles -PublishedAt $publishedAt
+    $zipName = $distributionPackages.FullZipName
+    $zipPath = $distributionPackages.FullZipPath
+    $zipHash = $distributionPackages.FullHash
+    $zipSize = $distributionPackages.FullSize
+    $coreZipName = $distributionPackages.CoreZipName
+    $coreZipPath = $distributionPackages.CoreZipPath
+    $coreZipHash = $distributionPackages.CoreHash
+    $coreZipSize = $distributionPackages.CoreSize
+    $manifestFileEntries = $distributionPackages.CoreFiles
+    $pluginPackageNames = @($distributionPackages.PluginPackages | ForEach-Object { $_.Name })
+}
+else {
+    $zipName = "GameHelper-$Version-full.zip"
+    $zipPath = Join-Path $env:TEMP $zipName
+    Write-Host "  Erstelle ZIP-Paket ($zipName) ..." -ForegroundColor DarkGray
+    New-PublishZip -Version $Version -PublishDirectory $PublishDir -FileEntries $publishFiles -OutputPath $zipPath
+    $zipHash = (Get-FileHash $zipPath -Algorithm SHA256).Hash
+    $zipSize = (Get-Item $zipPath).Length
+    $manifestFileEntries = $publishFiles
+}
 
 $migrationMessage = @(
     "Auto-update works up to v$MaxAutoUpdateVersion. From v$MigrationTargetVersion onward, install manually via GameHelperDownloader.exe or the full ZIP from GitHub. || Auto-Update funktioniert bis v$MaxAutoUpdateVersion. Ab v$MigrationTargetVersion bitte manuell per GameHelperDownloader.exe oder ZIP von GitHub installieren."
@@ -249,7 +276,7 @@ if ($LegacyManifest) {
 }
 else {
     $manifestFiles = @(
-        $publishFiles | ForEach-Object {
+        $manifestFileEntries | ForEach-Object {
             [ordered]@{ path = $_.path; hash = $_.hash }
         }
     )
@@ -259,11 +286,32 @@ else {
         changelog = @($Changelog)
         distribution = "zip"
         package = [ordered]@{
-            name = $zipName
-            hash = $zipHash
-            size = $zipSize
+            name = $(if ($useComponentPackages) { $coreZipName } else { $zipName })
+            hash = $(if ($useComponentPackages) { $coreZipHash } else { $zipHash })
+            size = $(if ($useComponentPackages) { $coreZipSize } else { $zipSize })
         }
         files = $manifestFiles
+    }
+    if ($useComponentPackages) {
+        $manifest.package.variant = "core"
+        $manifest.packages = [ordered]@{
+            core = [ordered]@{
+                name = $coreZipName
+                hash = $coreZipHash
+                size = $coreZipSize
+            }
+            full = [ordered]@{
+                name = $zipName
+                hash = $zipHash
+                size = $zipSize
+            }
+        }
+        $manifest.corePlugins = @(Get-CorePluginIds -Root $Root)
+        $manifest.pluginsCatalog = [ordered]@{
+            name = "plugins-catalog.json"
+            hash = $distributionPackages.CatalogHash
+            size = $distributionPackages.CatalogSize
+        }
     }
     if (Test-Path (Get-VersionsFilePath -Root $Root)) {
         $manifest["versionScheme"] = 2
@@ -278,7 +326,7 @@ else {
         Write-Host "  Manifest: ZIP + Migrationshinweis (Auto bis v$MaxAutoUpdateVersion, manuell ab v$MigrationTargetVersion)" -ForegroundColor DarkYellow
     }
 }
-$manifestJson = $manifest | ConvertTo-Json -Depth 5
+$manifestJson = $manifest | ConvertTo-Json -Depth 10
 $manifestPath = Join-Path $env:TEMP "gamehelper-manifest.json"
 $manifestJson | Set-Content $manifestPath -Encoding UTF8
 
@@ -337,7 +385,8 @@ function Sync-GithubRepoTextFile {
         [string]$Repo,
         [string]$Root,
         [string]$RelativePath,
-        [string]$CommitMessage
+        [string]$CommitMessage,
+        [string]$GithubContentsPath = ""
     )
 
     $localPath = Join-Path $Root $RelativePath
@@ -354,7 +403,13 @@ function Sync-GithubRepoTextFile {
 
     $content = $content -replace 'github\.com/[^/]+/[^/\s\)]+', "github.com/$Repo"
     $contentB64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
-    $apiPath = "repos/$Repo/contents/$($RelativePath -replace '\\', '/')"
+    $remotePath = if ([string]::IsNullOrWhiteSpace($GithubContentsPath)) {
+        $RelativePath
+    }
+    else {
+        $GithubContentsPath
+    }
+    $apiPath = "repos/$Repo/contents/$($remotePath -replace '\\', '/')"
 
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'SilentlyContinue'
@@ -383,11 +438,20 @@ function Update-GithubReadme {
     param(
         [string]$Repo,
         [string]$Root,
-        [string]$ReleaseTag
+        [string]$ReleaseTag,
+        [switch]$ExperimentalChannel
     )
 
-    $okReadme = Sync-GithubRepoTextFile -Repo $Repo -Root $Root -RelativePath "README.md" -CommitMessage "Update README for $ReleaseTag"
-    $null = Sync-GithubRepoTextFile -Repo $Repo -Root $Root -RelativePath "CREDITS.md" -CommitMessage "Update CREDITS for $ReleaseTag"
+    $readmeLocal = if ($ExperimentalChannel) { "scripts\experimental-readme.md" } else { "README.md" }
+    $okReadme = Sync-GithubRepoTextFile `
+        -Repo $Repo `
+        -Root $Root `
+        -RelativePath $readmeLocal `
+        -GithubContentsPath "README.md" `
+        -CommitMessage "Update README for $ReleaseTag"
+    if (-not $ExperimentalChannel) {
+        $null = Sync-GithubRepoTextFile -Repo $Repo -Root $Root -RelativePath "CREDITS.md" -CommitMessage "Update CREDITS for $ReleaseTag"
+    }
     return $okReadme
 }
 
@@ -396,11 +460,26 @@ function Test-CriticalReleaseAssets {
         [string]$Repo,
         [string]$ReleaseTag,
         [string]$DownloaderName,
-        [string]$ZipName
+        [string]$ZipName,
+        [string]$CoreZipName = "",
+        [string]$CatalogName = ""
     )
 
     $index = Get-GhReleaseAssetIndex -Repo $Repo -ReleaseTag $ReleaseTag
     $required = @('manifest.json', 'manifest.sig', $DownloaderName, $ZipName)
+    if (-not [string]::IsNullOrWhiteSpace($CoreZipName)) {
+        $required += $CoreZipName
+    }
+    if (-not [string]::IsNullOrWhiteSpace($CatalogName)) {
+        $required += $CatalogName
+        $catalogSigName = if ($CatalogName.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase)) {
+            ($CatalogName.Substring(0, $CatalogName.Length - 5) + '.sig')
+        }
+        else {
+            "$CatalogName.sig"
+        }
+        $required += $catalogSigName
+    }
     $missing = @($required | Where-Object { -not $index.ContainsKey($_) })
     if ($missing.Count -gt 0) {
         throw ("Release $ReleaseTag unvollstaendig - fehlende kritische Assets: {0}. " -f ($missing -join ', ') +
@@ -797,6 +876,14 @@ if ($LegacyManifest) {
     }
 }
 Copy-Item $zipPath (Join-Path $stageDir $zipName) -Force
+if ($useComponentPackages) {
+    Copy-Item $coreZipPath (Join-Path $stageDir $coreZipName) -Force
+    Copy-Item $distributionPackages.CatalogPath (Join-Path $stageDir "plugins-catalog.json") -Force
+    Copy-Item $distributionPackages.CatalogSigPath (Join-Path $stageDir "plugins-catalog.sig") -Force
+    foreach ($pluginPackage in @($distributionPackages.PluginPackages)) {
+        Copy-Item $pluginPackage.Path (Join-Path $stageDir $pluginPackage.Name) -Force
+    }
+}
 Copy-Item (Join-Path $PublishDir "changelog-history.json") (Join-Path $stageDir "changelog-history.json") -Force
 Copy-Item $manifestPath (Join-Path $stageDir "manifest.json") -Force
 Copy-Item $manifestSigPath (Join-Path $stageDir "manifest.sig") -Force
@@ -806,7 +893,9 @@ if (-not $SkipDownloader) {
         Write-Host ""
         Write-Host "=== GameHelperDownloader bauen ===" -ForegroundColor Cyan
         & (Join-Path $PSScriptRoot "build-downloader.ps1") -Configuration $Configuration -ExperimentalChannel:$ExperimentalDownloader
-        $downloaderExe = Join-Path $Root $DownloaderRemoteName
+        # Always stage the exe from publish-downloader (fresh build). Root copy may be stale if the file was locked.
+        $builtDownloader = Join-Path $Root "publish-downloader\GameHelperDownloader.exe"
+        $downloaderExe = if (Test-Path $builtDownloader) { $builtDownloader } else { Join-Path $Root $DownloaderRemoteName }
         if (-not (Test-Path $downloaderExe)) {
             throw "GameHelperDownloader.exe fehlt nach dem Build."
         }
@@ -825,10 +914,20 @@ if ($LegacyManifest) {
 }
 else {
     Test-StagedZipPackage -ZipName $zipName -ExpectedHash $zipHash -StageDir $stageDir
+    if ($useComponentPackages) {
+        Test-StagedZipPackage -ZipName $coreZipName -ExpectedHash $coreZipHash -StageDir $stageDir
+    }
 }
 Write-Host "  Staging/Manifest Hash-Check OK." -ForegroundColor DarkGray
 
 $packageHashes = @{ $zipName = $zipHash }
+if ($useComponentPackages) {
+    $packageHashes[$coreZipName] = $coreZipHash
+    $packageHashes["plugins-catalog.json"] = $distributionPackages.CatalogHash
+    foreach ($pluginPackage in @($distributionPackages.PluginPackages)) {
+        $packageHashes[$pluginPackage.Name] = $pluginPackage.Hash
+    }
+}
 if ($LegacyManifest) {
     foreach ($entry in $publishFiles) {
         $packageHashes[$entry.package] = [string]$entry.hash
@@ -841,6 +940,12 @@ $alwaysUploadNames = @(
     $DownloaderRemoteName,
     'changelog-history.json'
 )
+if ($useComponentPackages) {
+    $alwaysUploadNames += $coreZipName
+    $alwaysUploadNames += 'plugins-catalog.json'
+    $alwaysUploadNames += 'plugins-catalog.sig'
+    $alwaysUploadNames += $pluginPackageNames
+}
 
 # GitHub release notes: English half only (manifest keeps full bilingual lines).
 $notes = ($Changelog | ForEach-Object {
@@ -895,16 +1000,29 @@ $manifestAssetIndex = Get-GhReleaseAssetIndex -Repo $Repository -ReleaseTag $tag
 Invoke-GhReleaseUploadBatch -Repo $Repository -ReleaseTag $tag -BatchPaths @($manifestStagePath) -AssetIndex $manifestAssetIndex
 
 if (-not $LegacyManifest) {
-    Remove-StaleReleaseAssets -Repo $Repository -ReleaseTag $tag -KeepNames @(
+    $keepReleaseAssets = @(
         'manifest.json',
         'manifest.sig',
         $zipName,
         $DownloaderRemoteName,
         'changelog-history.json'
     )
+    if ($useComponentPackages) {
+        $keepReleaseAssets += $coreZipName
+        $keepReleaseAssets += 'plugins-catalog.json'
+        $keepReleaseAssets += 'plugins-catalog.sig'
+        $keepReleaseAssets += $pluginPackageNames
+    }
+
+    Remove-StaleReleaseAssets -Repo $Repository -ReleaseTag $tag -KeepNames $keepReleaseAssets
 }
 
-Test-CriticalReleaseAssets -Repo $Repository -ReleaseTag $tag -DownloaderName $DownloaderRemoteName -ZipName $zipName
+if ($useComponentPackages) {
+    Test-CriticalReleaseAssets -Repo $Repository -ReleaseTag $tag -DownloaderName $DownloaderRemoteName -ZipName $zipName -CoreZipName $coreZipName -CatalogName "plugins-catalog.json"
+}
+else {
+    Test-CriticalReleaseAssets -Repo $Repository -ReleaseTag $tag -DownloaderName $DownloaderRemoteName -ZipName $zipName
+}
 
 Write-Host ""
 Write-Host "Pruefe manifest.json (oeffentlich)..." -ForegroundColor Cyan
@@ -968,11 +1086,17 @@ Write-BuildInfoFiles -PublishDir $PublishDir -Version $Version -Source "github-p
 
 if (-not $SkipRepoDocSync) {
     Write-Host "  Aktualisiere README auf GitHub ..." -ForegroundColor DarkGray
-    Update-GithubReadme -Repo $Repository -Root $Root -ReleaseTag $tag
+    Update-GithubReadme -Repo $Repository -Root $Root -ReleaseTag $tag -ExperimentalChannel:$ExperimentalDownloader
 }
 
 $downloaderUrl = "https://github.com/$Repository/releases/latest/download/$DownloaderRemoteName"
-$zipUrl = "https://github.com/$Repository/releases/latest/download/GameHelper-$Version-full.zip"
+$zipUrl = if ($useComponentPackages) {
+    "https://github.com/$Repository/releases/latest/download/$coreZipName"
+}
+else {
+    "https://github.com/$Repository/releases/latest/download/GameHelper-$Version-full.zip"
+}
+$fullZipUrl = "https://github.com/$Repository/releases/latest/download/$zipName"
 $releaseUrl = "https://github.com/$Repository/releases/tag/$tag"
 
 Write-Host ""
@@ -981,14 +1105,26 @@ Write-Host ("Publish abgeschlossen: {0} ({1}, {2} Release-Assets)" -f $tag, $pub
 Write-Host "GitHub Repo:     https://github.com/$Repository" -ForegroundColor Green
 Write-Host "Release:         $releaseUrl" -ForegroundColor Green
 Write-Host "Downloader:      $downloaderUrl" -ForegroundColor Green
-Write-Host "Komplett-ZIP:    $zipUrl" -ForegroundColor Green
+if ($useComponentPackages) {
+    Write-Host "Core-ZIP:        $zipUrl" -ForegroundColor Green
+    Write-Host "Full-ZIP:        $fullZipUrl" -ForegroundColor Green
+    Write-Host "Plugin-Pakete:   $($pluginPackageNames.Count) optional" -ForegroundColor Green
+}
+else {
+    Write-Host "Komplett-ZIP:    $zipUrl" -ForegroundColor Green
+}
 Write-Host "Manifest:        $manifestUrlLatest" -ForegroundColor DarkGray
 Write-Host ""
 if ($LegacyManifest) {
     Write-Host "Hinweis: Letztes per-file Release - Nutzer werden auf manuelles v$MigrationTargetVersion hingewiesen." -ForegroundColor Cyan
 }
 else {
-    Write-Host "Hinweis: Release enthaelt nur ZIP + Downloader + Manifest (keine Einzel-DLLs mehr)." -ForegroundColor Cyan
+    if ($useComponentPackages) {
+        Write-Host "Hinweis: Release enthaelt Core-ZIP (Default), Full-ZIP, optionale Plugin-ZIPs und plugins-catalog.json." -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "Hinweis: Release enthaelt nur ZIP + Downloader + Manifest (keine Einzel-DLLs mehr)." -ForegroundColor Cyan
+    }
 }
 Write-Host "Freunde: GameHelperDownloader.exe oder ZIP teilen (kein Token noetig)." -ForegroundColor Cyan
 

@@ -16,4 +16,13 @@ Versionierung (ab Komponenten-Split):
   Nur Core bumpen:         scripts\set-component-version.ps1 -Component core -Version 1.0.1
   Rollback Monolith 1.3.2: rollback-1.3.2-monolith.bat  (Git-Tag v1.3.2-monolith)
 
+Distribution (Publish):
+  Default-Downloader:  GameHelper-1.0.0-core.zip  (4 Core-Plugins, kein Atlas etc.)
+  Vollstaendig:        GameHelper-1.0.0-full.zip  (--full beim Downloader)
+  Optional:            GameHelper-Plugin-<Name>-<Version>.zip + plugins-catalog.json
+  In-App:              Plugins -> Plugin-Katalog -> Herunterladen
+  Plugin per CLI:      GameHelperDownloader-Experimental.exe --target <ordner> --install-plugin Atlas
+  Plugin entfernen:    GameHelperDownloader-Experimental.exe --target <ordner> --remove-plugin Atlas
+  GitHub README:       scripts\experimental-readme.md (wird bei Publish als README.md synchronisiert)
+
 Der fruehere Ordner "Gamehelper Experimental" ist obsolet (Deploy liegt jetzt in publish\).

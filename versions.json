@@ -1,127 +1,145 @@
-{
-  "schema": 2,
-  "versionScheme": 2,
-  "legacyMonolithVersion": "1.3.2",
-  "components": {
-    "core": {
-      "version": "1.0.0",
-      "displayName": "GameHelper core",
-      "projects": [
-        "GameHelper/GameHelper.csproj"
-      ]
-    },
-    "gameOffsets": {
-      "version": "1.0.0",
-      "displayName": "GameOffsets",
-      "projects": [
-        "GameOffsets/GameOffsets.csproj"
-      ]
-    },
-    "launcher": {
-      "version": "1.0.0",
-      "displayName": "Launcher",
-      "projects": [
-        "Launcher/Launcher.csproj"
-      ]
-    },
-    "downloader": {
-      "version": "1.0.0",
-      "displayName": "Downloader",
-      "projects": [
-        "Downloader/Downloader.csproj"
-      ]
-    }
-  },
-  "plugins": {
-    "AutoPot": {
-      "version": "1.0.0",
-      "folder": "Autopot",
-      "project": "Plugins/Autopot/Autopot.csproj",
-      "core": true
-    },
-    "HealthBars": {
-      "version": "1.0.0",
-      "folder": "HealthBars",
-      "project": "Plugins/HealthBars/HealthBars.csproj",
-      "core": true
-    },
-    "Radar": {
-      "version": "1.0.0",
-      "folder": "Radar",
-      "project": "Plugins/Radar/Radar.csproj",
-      "core": true
-    },
-    "PreloadAlert": {
-      "version": "1.0.0",
-      "folder": "PreloadAlert",
-      "project": "Plugins/PreloadAlert/PreloadAlert.csproj",
-      "core": true
-    },
-    "Atlas": {
-      "version": "1.0.0",
-      "folder": "Atlas",
-      "project": "Plugins/Atlas/Atlas.csproj",
-      "core": false
-    },
-    "AutoHotKeyTrigger": {
-      "version": "1.0.0",
-      "folder": "AutoHotKeyTrigger",
-      "project": "Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj",
-      "core": false
-    },
-    "AuraTracker": {
-      "version": "1.0.0",
-      "folder": "AuraTracker",
-      "project": "Plugins/AuraTracker/AuraTracker.csproj",
-      "core": false
-    },
-    "MapKillCounter": {
-      "version": "1.0.0",
-      "folder": "MapKillCounter",
-      "project": "Plugins/MapKillCounter/MapKillCounter.csproj",
-      "core": false
-    },
-    "AmanamuVoidAlert": {
-      "version": "1.0.0",
-      "folder": "AmanamuVoidAlert",
-      "project": "Plugins/AmanamuVoidAlert/AmanamuVoidAlert.csproj",
-      "core": false
-    },
-    "PlayerBuffBar": {
-      "version": "1.0.0",
-      "folder": "PlayerBuffBar",
-      "project": "Plugins/PlayerBuffBar/PlayerBuffBar.csproj",
-      "core": false
-    },
-    "RitualHelper": {
-      "version": "1.0.0",
-      "folder": "RitualHelper",
-      "project": "Plugins/RitualHelper/RitualHelper.csproj",
-      "core": false
-    },
-    "RuneforgeHelper": {
-      "version": "1.0.0",
-      "folder": "RuneforgeHelper",
-      "project": "Plugins/RuneforgeHelper/RuneforgeHelper.csproj",
-      "core": false
-    },
-    "SekhemaHelper": {
-      "version": "1.0.0",
-      "folder": "SekhemaHelper",
-      "project": "Plugins/SekhemaHelper/SekhemaHelper.csproj",
-      "core": false
-    },
-    "SimpleBars": {
-      "version": "1.0.0",
-      "folder": "SimpleBars",
-      "project": "Plugins/SimpleBars/SimpleBars.csproj",
-      "core": false
-    },
-    "Wraedar": {
-      "version": "1.0.0",
-      "folder": "Wraedar",
-      "project": "Plugins/Wraedar/Wraedar.csproj",
-      "core": false
-    }
-  }
+﻿{
+    "schema":  2,
+    "versionScheme":  2,
+    "legacyMonolithVersion":  "1.3.2",
+    "components":  {
+                       "core":  {
+                                    "version":  "1.0.0",
+                                    "displayName":  "GameHelper core",
+                                    "projects":  [
+                                                     "GameHelper/GameHelper.csproj"
+                                                 ]
+                                },
+                       "gameOffsets":  {
+                                           "version":  "1.0.0",
+                                           "displayName":  "GameOffsets",
+                                           "projects":  [
+                                                            "GameOffsets/GameOffsets.csproj"
+                                                        ]
+                                       },
+                       "launcher":  {
+                                        "version":  "1.0.0",
+                                        "displayName":  "Launcher",
+                                        "projects":  [
+                                                         "Launcher/Launcher.csproj"
+                                                     ]
+                                    },
+                       "downloader":  {
+                                          "version":  "1.0.0",
+                                          "displayName":  "Downloader",
+                                          "projects":  [
+                                                           "Downloader/Downloader.csproj"
+                                                       ]
+                                      }
+                   },
+    "plugins":  {
+                    "AutoPot":  {
+                                    "version":  "1.0.0",
+                                    "folder":  "Autopot",
+                                    "project":  "Plugins/Autopot/Autopot.csproj",
+                                    "core":  true
+                                },
+                    "HealthBars":  {
+                                       "version":  "1.0.0",
+                                       "folder":  "HealthBars",
+                                       "project":  "Plugins/HealthBars/HealthBars.csproj",
+                                       "core":  true
+                                   },
+                    "Radar":  {
+                                  "version":  "1.0.1",
+                                  "folder":  "Radar",
+                                  "project":  "Plugins/Radar/Radar.csproj",
+                                  "core":  true
+                              },
+                    "PreloadAlert":  {
+                                         "version":  "1.0.0",
+                                         "folder":  "PreloadAlert",
+                                         "project":  "Plugins/PreloadAlert/PreloadAlert.csproj",
+                                         "core":  true
+                                     },
+                    "Atlas":  {
+                                  "version":  "1.0.4",
+                                  "folder":  "Atlas",
+                                  "project":  "Plugins/Atlas/Atlas.csproj",
+                                  "core":  false
+                              },
+                    "AutoHotKeyTrigger":  {
+                                              "version":  "1.0.2",
+                                              "folder":  "AutoHotKeyTrigger",
+                                              "project":  "Plugins/AutoHotKeyTrigger/AutoHotKeyTrigger.csproj",
+                                              "core":  false
+                                          },
+                    "AuraTracker":  {
+                                        "version":  "1.0.1",
+                                        "folder":  "AuraTracker",
+                                        "project":  "Plugins/AuraTracker/AuraTracker.csproj",
+                                        "core":  false
+                                    },
+                    "MapKillCounter":  {
+                                           "version":  "1.0.0",
+                                           "folder":  "MapKillCounter",
+                                           "project":  "Plugins/MapKillCounter/MapKillCounter.csproj",
+                                           "core":  false
+                                       },
+                    "FarmTracker":  {
+                                        "version":  "1.0.1",
+                                        "folder":  "FarmTracker",
+                                        "project":  "Plugins/FarmTracker/FarmTracker.csproj",
+                                        "core":  false
+                                    },
+                    "AmanamuVoidAlert":  {
+                                             "version":  "1.0.0",
+                                             "folder":  "AmanamuVoidAlert",
+                                             "project":  "Plugins/AmanamuVoidAlert/AmanamuVoidAlert.csproj",
+                                             "core":  false
+                                         },
+                    "PlayerBuffBar":  {
+                                          "version":  "1.0.2",
+                                          "folder":  "PlayerBuffBar",
+                                          "project":  "Plugins/PlayerBuffBar/PlayerBuffBar.csproj",
+                                          "core":  false
+                                      },
+                    "RitualHelper":  {
+                                         "version":  "1.0.0",
+                                         "folder":  "RitualHelper",
+                                         "project":  "Plugins/RitualHelper/RitualHelper.csproj",
+                                         "core":  false
+                                     },
+                    "RuneforgeHelper":  {
+                                            "version":  "1.0.1",
+                                            "folder":  "RuneforgeHelper",
+                                            "project":  "Plugins/RuneforgeHelper/RuneforgeHelper.csproj",
+                                            "core":  false
+                                        },
+                    "RunecraftHelper":  {
+                                            "version":  "1.0.1",
+                                            "folder":  "RunecraftHelper",
+                                            "project":  "Plugins/RunecraftHelper/RunecraftHelper.csproj",
+                                            "core":  false
+                                        },
+                    "SekhemaHelper":  {
+                                          "version":  "1.0.1",
+                                          "folder":  "SekhemaHelper",
+                                          "project":  "Plugins/SekhemaHelper/SekhemaHelper.csproj",
+                                          "core":  false
+                                      },
+                    "SimpleBars":  {
+                                       "version":  "1.0.0",
+                                       "folder":  "SimpleBars",
+                                       "project":  "Plugins/SimpleBars/SimpleBars.csproj",
+                                       "core":  false
+                                   },
+                    "Hiveblood":  {
+                                      "version":  "1.0.1",
+                                      "folder":  "Hiveblood",
+                                      "project":  "Plugins/Hiveblood/Hiveblood.csproj",
+                                      "core":  false
+                                  },
+                    "Wraedar":  {
+                                    "version":  "1.0.0",
+                                    "folder":  "Wraedar",
+                                    "project":  "Plugins/Wraedar/Wraedar.csproj",
+                                    "core":  false
+                                }
+                }
 }

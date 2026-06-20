@@ -120,6 +120,13 @@
                                            "Improvements and bug fixes in this version. || Verbesserungen und Fehlerbehebungen in dieser Version.",
                                            "Plugins and settings were updated. || Plugins und Einstellungen wurden aktualisiert."
                                        ]
+                     },
+                     {
+                         "version":  "1.0.0",
+                         "published":  "2026-06-20T12:40:05.1316419Z",
+                         "changelog":  [
+                                           "Version 1.0.0 release || Version 1.0.0 Release"
+                                       ]
                      }
                  ]
 }

@@ -111,16 +111,18 @@ function Get-PluginUpstreamUrl {
     param([string]$PluginId)
 
     $upstream = @{
-        Atlas             = 'https://github.com/Gordin/GameHelper2/tree/main/Plugins/Atlas'
+        Atlas             = 'https://github.com/yokkenUA/Atlas/releases/tag/v0.1.3'
         AutoHotKeyTrigger = 'https://github.com/Gordin/GameHelper2'
-        AuraTracker         = 'https://github.com/derekShaheen/AuraTracker'
-        AmanamuVoidAlert    = 'https://github.com/1k4ru5g3/AmanamuVoidAlertPlugin'
+        AuraTracker         = 'https://github.com/MordWraith/AuraTracker'
+        AmanamuVoidAlert    = 'https://github.com/MordWraith/AmanamuVoidAlert'
+        MapKillCounter      = 'https://github.com/MordWraith/MapKillCounter'
         RitualHelper        = 'https://github.com/Queuete/GameHelper'
         RuneforgeHelper     = 'https://github.com/yokkenUA/RunecraftHelper'
         RunecraftHelper     = 'https://github.com/yokkenUA/RunecraftHelper'
         SekhemaHelper       = 'https://github.com/yokkenUA/SekhemaHelper'
         FarmTracker         = 'https://github.com/MordWraith/FarmTracker'
-        SimpleBars          = 'https://github.com/Reynbow/simplebars'
+        Hiveblood           = 'https://github.com/MordWraith/Hiveblood'
+        SimpleBars          = 'https://github.com/MordWraith/SimpleBars'
         Wraedar             = 'https://github.com/diesal/Wraedar'
     }
 
@@ -134,6 +136,19 @@ function Get-PluginUpstreamUrl {
 function Get-PluginForkBrowseUrl {
     param([string]$PluginId)
 
+    $fork = @{
+        FarmTracker        = 'https://github.com/MordWraith/FarmTracker'
+        Hiveblood          = 'https://github.com/MordWraith/Hiveblood'
+        AmanamuVoidAlert   = 'https://github.com/MordWraith/AmanamuVoidAlert'
+        AuraTracker        = 'https://github.com/MordWraith/AuraTracker'
+        MapKillCounter     = 'https://github.com/MordWraith/MapKillCounter'
+        SimpleBars         = 'https://github.com/MordWraith/SimpleBars'
+    }
+
+    if ($fork.ContainsKey($PluginId)) {
+        return [string]$fork[$PluginId]
+    }
+
     return "https://github.com/MordWraith/Gamehelper/tree/main/Plugins/$PluginId"
 }
 
@@ -143,8 +158,8 @@ function Get-PluginCatalogUiMetadata {
     $map = @{
         Atlas = @{
             Author = 'Nekkoy'
-            DescriptionEn = 'Endgame atlas overlay (Gordin upstream): search, pathing, map content badges.'
-            DescriptionDe = 'Endgame-Atlas-Overlay (Gordin upstream): Suche, Pfadfindung, Map-Inhalts-Badges.'
+            DescriptionEn = 'Endgame atlas overlay (yokkenUA v0.1.3): search, chevron routes, hide available, expedition targets, content icons.'
+            DescriptionDe = 'Endgame-Atlas-Overlay (yokkenUA v0.1.3): Suche, Chevron-Routen, Verfuegbare ausblenden, Expedition-Ziele, Content-Icons.'
         }
         AutoHotKeyTrigger = @{
             Author = 'GameHelper2 upstream'
@@ -195,6 +210,11 @@ function Get-PluginCatalogUiMetadata {
             Author = 'Nekkoy'
             DescriptionEn = 'Sekhema trial map pathing assistance.'
             DescriptionDe = 'Hilfe fuer Sekhema-Trial-Map-Pfade.'
+        }
+        Hiveblood = @{
+            Author = 'MordWraith'
+            DescriptionEn = 'Hiveblood estimate for PoE2: Genesis Tree sync + Breach gain popups; overlay at inventory.'
+            DescriptionDe = 'Hiveblood-Schaetzung (PoE2): Genesis-Tree-Sync + Breach-Popups; Anzeige am Inventar.'
         }
         SimpleBars = @{
             Author = 'Reynbow'

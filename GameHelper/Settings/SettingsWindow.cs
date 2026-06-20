@@ -1,4 +1,4 @@
-﻿// <copyright file="SettingsWindow.cs" company="None">
+// <copyright file="SettingsWindow.cs" company="None">
 // Copyright (c) None. All rights reserved.
 // </copyright>
 
@@ -19,7 +19,9 @@ namespace GameHelper.Settings
     using GameHelper.RemoteEnums.Entity;
     using GameHelper.RemoteEnums;
     using GameHelper.Localization;
+    using GameHelper.PluginStore;
     using GameHelper.Ui;
+    using Shared.PluginPackages;
 
     /// <summary>
     ///     Creates the MainMenu on the UI.
@@ -28,8 +30,6 @@ namespace GameHelper.Settings
     {
         private static bool isOverlayRunningLocal = true;
         private static bool isSettingsWindowVisible = true;
-        private static bool isGeneralWindowVisible;
-        private static bool isPluginsWindowVisible;
         private static Vector2 mainWindowPos;
         private static Vector2 mainWindowSize;
 
@@ -38,9 +38,6 @@ namespace GameHelper.Settings
         internal static Vector2 MainWindowSize => mainWindowSize;
 
         internal static bool IsSettingsWindowVisible => isSettingsWindowVisible;
-
-        private const float GeneralDockWidth = 520f;
-        private const float PluginsDockWidth = 460f;
 
         private static EntityFilterType efilterType = EntityFilterType.PATH;
         private static string filterText = string.Empty;
@@ -59,6 +56,8 @@ namespace GameHelper.Settings
         private static bool pluginLoaded = true;
         private static bool showImGuiDemo = false;
 #endif
+
+        private static uint pluginsHubBarGeneration;
 
         /// <summary>
         ///     Initializes the Main Menu.
@@ -108,29 +107,32 @@ namespace GameHelper.Settings
             ImGui.EndMenuBar();
         }
 
+        private static void DrawOptionalPluginUpdateNotice()
+        {
+            var updates = PluginStoreController.Default.GetInstalledPluginsNeedingUpdate();
+            if (updates.Count == 0)
+            {
+                return;
+            }
+
+            var pluginList = string.Join(", ", updates);
+            var text = OverlayLocalization.L(
+                $"Update available: {pluginList}",
+                $"Update verfügbar: {pluginList}");
+
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.92f, 0.16f, 1f));
+            ImGui.TextUnformatted(text);
+            ImGui.PopStyleColor();
+            ImGui.Spacing();
+        }
+
         private static void DrawHubToolbar()
         {
-            if (ImGui.Button(OverlayLocalization.L("General", "Allgemein"), new Vector2(130, 28)))
-            {
-                isGeneralWindowVisible = !isGeneralWindowVisible;
-            }
-
-            ImGui.SameLine();
-            if (ImGui.Button(OverlayLocalization.L("Plugins", "Plugins"), new Vector2(130, 28)))
-            {
-                isPluginsWindowVisible = !isPluginsWindowVisible;
-            }
-
-            ImGui.SameLine();
-            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
-            ImGui.Text(OverlayLocalization.L("Docked left of this window.", "Links an dieses Fenster angedockt."));
-            ImGui.PopStyleColor();
-
             var logLabel = OverlayLocalization.L("Log", "Log");
             var logButtonWidth = 130f;
             var logWasVisible = ActivityLogWindow.IsVisible;
-            ImGui.SameLine();
-            ImGui.SetCursorPosX(ImGui.GetWindowWidth() - ImGui.GetStyle().WindowPadding.X - logButtonWidth);
+            var logX = ImGui.GetWindowWidth() - ImGui.GetStyle().WindowPadding.X - logButtonWidth;
+            ImGui.SetCursorPosX(logX);
             if (logWasVisible)
             {
                 ImGui.PushStyleColor(ImGuiCol.Button, ImGuiTheme.AccentMuted);
@@ -150,59 +152,51 @@ namespace GameHelper.Settings
             ImGui.Spacing();
         }
 
-        private static void DrawDockedSideWindow(ref bool visible, string title, float width, float offsetFromMainRight, Action drawBody)
+        private static void DrawMainHubContent()
         {
-            if (!visible)
+            if (!ImGui.BeginTabBar("mainHubBar", ImGuiTabBarFlags.None))
             {
                 return;
             }
 
-            var pos = new Vector2(mainWindowPos.X - offsetFromMainRight, mainWindowPos.Y);
-            var size = new Vector2(width, Math.Max(mainWindowSize.Y, 300f));
-
-            ImGui.SetNextWindowPos(pos, ImGuiCond.Always);
-            ImGui.SetNextWindowSize(size, ImGuiCond.Always);
-
-            if (!ImGui.Begin(title, ref visible, ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse))
+            if (ImGui.BeginTabItem(OverlayLocalization.L("General", "Allgemein")))
             {
-                ImGui.End();
-                return;
+                ImGuiTheme.BeginPanel("MainHubGeneralPanel");
+                DrawCoreSettings();
+                ImGuiTheme.EndPanel();
+                ImGui.EndTabItem();
             }
 
-            drawBody();
-            ImGui.End();
-        }
-
-        private static float GetPluginsDockOffset()
-        {
-            return PluginsDockWidth;
-        }
-
-        private static float GetGeneralDockOffset()
-        {
-            var offset = GeneralDockWidth;
-            if (isPluginsWindowVisible)
+            if (ImGui.BeginTabItem(OverlayLocalization.L("Plugin settings", "Plugin-Einstellungen")))
             {
-                offset += PluginsDockWidth;
+                ImGuiTheme.BeginPanel("MainHubPluginSettingsPanel");
+                DrawPluginTabs();
+                ImGuiTheme.EndPanel();
+                ImGui.EndTabItem();
             }
 
-            return offset;
+            if (ImGui.BeginTabItem(OverlayLocalization.L("Plugins", "Plugins")))
+            {
+                ImGuiTheme.BeginPanel("MainHubPluginsPanel");
+                DrawPluginsPanel(ImGui.IsItemActivated());
+                ImGuiTheme.EndPanel();
+                ImGui.EndTabItem();
+            }
+
+            ImGui.EndTabBar();
         }
 
         private static void DrawPluginTabs()
         {
-            ImGuiTheme.SectionHeader(
-                OverlayLocalization.L("Plugin settings", "Plugin-Einstellungen"),
-                OverlayLocalization.L(
-                    "Configure active plugins here. Use the buttons above for global options.",
-                    "Aktive Plugins hier konfigurieren. Buttons oben fuer globale Optionen."));
-
-            var enabledPlugins = PManager.Plugins.Where(p => p.Metadata.Enable).ToList();
+            var enabledPlugins = PManager.Plugins
+                .Where(p => p.Metadata.Enable)
+                .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             if (enabledPlugins.Count == 0)
             {
                 ImGui.TextDisabled(OverlayLocalization.L(
-                    "No active plugins. Open Plugins to enable some.",
-                    "Keine aktiven Plugins. Unter Plugins welche aktivieren."));
+                    "No active plugins. Open the Plugins tab to enable some.",
+                    "Keine aktiven Plugins. Tab Plugins oeffnen und welche aktivieren."));
                 return;
             }
 
@@ -213,10 +207,7 @@ namespace GameHelper.Settings
 
             foreach (var container in enabledPlugins)
             {
-                ImGui.PushStyleColor(ImGuiCol.Tab, new Vector4(0.16f, 0.20f, 0.30f, 1f));
-                ImGui.PushStyleColor(ImGuiCol.TabHovered, new Vector4(0.28f, 0.38f, 0.55f, 1f));
-                ImGui.PushStyleColor(ImGuiCol.TabSelected, ImGuiTheme.Accent);
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.96f, 1f, 1f));
+                ImGuiTheme.PushPluginTabColors();
 
                 if (ImGui.BeginTabItem($"{container.Name}##pluginCfg"))
                 {
@@ -224,42 +215,10 @@ namespace GameHelper.Settings
                     ImGui.EndTabItem();
                 }
 
-                ImGui.PopStyleColor(4);
+                ImGuiTheme.PopPluginTabColors();
             }
 
             ImGui.EndTabBar();
-        }
-
-        private static void DrawGeneralWindow()
-        {
-            var title = $"{OverlayLocalization.L("General", "Allgemein")} | GameHelper###GameHelperGeneralPanel";
-            DrawDockedSideWindow(
-                ref isGeneralWindowVisible,
-                title,
-                GeneralDockWidth,
-                GetGeneralDockOffset(),
-                () =>
-                {
-                    ImGuiTheme.BeginPanel("GeneralContentPanel");
-                    DrawCoreSettings();
-                    ImGuiTheme.EndPanel();
-                });
-        }
-
-        private static void DrawPluginsWindow()
-        {
-            var title = $"{OverlayLocalization.L("Plugins", "Plugins")} | GameHelper###GameHelperPluginsPanel";
-            DrawDockedSideWindow(
-                ref isPluginsWindowVisible,
-                title,
-                PluginsDockWidth,
-                GetPluginsDockOffset(),
-                () =>
-                {
-                    ImGuiTheme.BeginPanel("PluginsContentPanel");
-                    DrawPluginsPanel();
-                    ImGuiTheme.EndPanel();
-                });
         }
 
         private static void DrawOverlayLanguageAndFontWidget()
@@ -359,7 +318,47 @@ namespace GameHelper.Settings
             }
         }
 
-        private static void DrawPluginsPanel()
+        private static void DrawPluginsPanel(bool selectCatalogTab = false)
+        {
+            if (selectCatalogTab)
+            {
+                pluginsHubBarGeneration++;
+            }
+
+            ImGuiTheme.PushPluginTabColors();
+            if (!ImGui.BeginTabBar($"pluginsHubBar###{pluginsHubBarGeneration}", ImGuiTabBarFlags.None))
+            {
+                ImGuiTheme.PopPluginTabColors();
+                return;
+            }
+
+            var catalogTabOpen = true;
+            var catalogTabFlags = selectCatalogTab ? ImGuiTabItemFlags.SetSelected : ImGuiTabItemFlags.None;
+            if (ImGui.BeginTabItem(
+                OverlayLocalization.L("Plugin catalog", "Plugin-Katalog"),
+                ref catalogTabOpen,
+                catalogTabFlags))
+            {
+                DrawOptionalPluginStore();
+                ImGui.EndTabItem();
+            }
+
+            var installedTabOpen = true;
+            if (ImGui.BeginTabItem(
+                OverlayLocalization.L("Installed plugins", "Installierte Plugins"),
+                ref installedTabOpen))
+            {
+                DrawInstalledPluginManagement();
+                ImGui.EndTabItem();
+            }
+
+            ImGui.EndTabBar();
+            ImGuiTheme.PopPluginTabColors();
+
+            DrawPluginStoreStatus(PluginStoreController.Default);
+        }
+
+        private static void DrawInstalledPluginManagement()
         {
             ImGuiTheme.SectionHeader(
                 OverlayLocalization.L("Plugin management", "Plugin-Verwaltung"),
@@ -383,7 +382,9 @@ namespace GameHelper.Settings
 
             ImGui.Spacing();
 
-            if (!ImGui.BeginTable("pluginTable", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.ScrollY, new Vector2(0, 0)))
+            var pluginCount = PManager.Plugins.Count;
+            var tableFlags = BuildAdaptiveTableLayout(pluginCount, out var tableHeight);
+            if (!ImGui.BeginTable("pluginTable", 4, tableFlags, new Vector2(0, tableHeight)))
             {
                 return;
             }
@@ -394,7 +395,7 @@ namespace GameHelper.Settings
             ImGui.TableSetupColumn(OverlayLocalization.L("Enable", "Aktivieren"), ImGuiTableColumnFlags.WidthFixed, 52f);
             ImGui.TableHeadersRow();
 
-            foreach (var container in PManager.Plugins)
+            foreach (var container in PManager.Plugins.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
             {
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -434,9 +435,457 @@ namespace GameHelper.Settings
             ImGui.EndTable();
         }
 
+        private static void DrawOptionalPluginStore()
+        {
+            var store = PluginStoreController.Default;
+
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
+            ImGui.TextWrapped(OverlayLocalization.L(
+                "Download optional plugins from GitHub. Core plugins ship with the main install.",
+                "Optionale Plugins von GitHub herunterladen. Core-Plugins liegen im Hauptpaket bei."));
+            ImGui.PopStyleColor();
+            ImGui.Spacing();
+
+            var busy = store.IsBusy;
+            if (busy)
+            {
+                ImGui.BeginDisabled();
+            }
+
+            if (ImGui.SmallButton(OverlayLocalization.L("Refresh catalog", "Katalog aktualisieren")))
+            {
+                store.RefreshCatalog();
+            }
+
+            if (busy)
+            {
+                ImGui.EndDisabled();
+            }
+
+            var entries = store.Entries;
+            if (entries.Count == 0)
+            {
+                ImGui.TextDisabled(OverlayLocalization.L(
+                    "No catalog loaded. Use Refresh catalog or reinstall from the Experimental downloader.",
+                    "Kein Katalog geladen. Katalog aktualisieren oder neu per Experimental-Downloader installieren."));
+            }
+            else
+            {
+                var statusReserve = ComputePluginStoreStatusReserve(store);
+                var tableFlags = BuildAdaptiveTableLayout(
+                    entries.Count,
+                    out var tableHeight,
+                    reservedBelow: statusReserve,
+                    fillAvailable: true);
+                if (ImGui.BeginTable("optionalPluginStore", 7, tableFlags, new Vector2(0, tableHeight)))
+                {
+                ImGui.TableSetupColumn(OverlayLocalization.L("Plugin", "Plugin"), ImGuiTableColumnFlags.WidthFixed, 132f);
+                ImGui.TableSetupColumn(OverlayLocalization.L("Author", "Ersteller"), ImGuiTableColumnFlags.WidthFixed, 88f);
+                ImGui.TableSetupColumn(OverlayLocalization.L("Info", "Info"), ImGuiTableColumnFlags.WidthStretch, 0.42f);
+                ImGui.TableSetupColumn(OverlayLocalization.L("Source", "Quelle"), ImGuiTableColumnFlags.WidthFixed, 52f);
+                ImGui.TableSetupColumn(OverlayLocalization.L("Version", "Version"), ImGuiTableColumnFlags.WidthFixed, 56f);
+                ImGui.TableSetupColumn(OverlayLocalization.L("Status", "Status"), ImGuiTableColumnFlags.WidthFixed, 108f);
+                ImGui.TableSetupColumn(OverlayLocalization.L("Action", "Aktion"), ImGuiTableColumnFlags.WidthFixed, 148f);
+                ImGui.TableHeadersRow();
+
+                var pendingRestartUpdates = new HashSet<string>(
+                    store.PendingRestartUpdates,
+                    StringComparer.OrdinalIgnoreCase);
+
+                foreach (var entry in entries)
+                {
+                    var awaitingRestart = entry.IsPendingRemoval
+                                          || entry.IsPendingUpdate
+                                          || pendingRestartUpdates.Contains(entry.Id);
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.Text(entry.Id);
+
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    DrawCatalogAuthorLink(entry);
+
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
+                    ImGui.PushTextWrapPos(ImGui.GetCursorPos().X + ImGui.GetContentRegionAvail().X);
+                    ImGui.TextWrapped(PluginCatalogUi.Description(entry));
+                    ImGui.PopTextWrapPos();
+                    ImGui.PopStyleColor();
+
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    DrawCatalogLinkButton(entry);
+
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    ImGui.Text(PluginCatalogUi.DisplayVersion(entry));
+
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    if (entry.IsPendingRemoval)
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Accent);
+                        ImGui.Text(OverlayLocalization.L("Removal pending (restart)", "Entfernung ausstehend (Neustart)"));
+                        ImGui.PopStyleColor();
+                    }
+                    else if (entry.IsPendingUpdate || pendingRestartUpdates.Contains(entry.Id))
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Accent);
+                        ImGui.Text(OverlayLocalization.L("Update pending (restart)", "Update ausstehend (Neustart)"));
+                        ImGui.PopStyleColor();
+                    }
+                    else if (!entry.IsInstalled)
+                    {
+                        ImGui.TextDisabled(OverlayLocalization.L("Not installed", "Nicht installiert"));
+                    }
+                    else if (entry.NeedsUpdate)
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Accent);
+                        ImGui.Text(OverlayLocalization.L("Update available", "Update verfuegbar"));
+                        ImGui.PopStyleColor();
+                    }
+                    else if (entry.IsLocalOrUnknownInstall)
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Success);
+                        ImGui.Text(OverlayLocalization.L("Installed (local)", "Installiert (lokal)"));
+                        ImGui.PopStyleColor();
+                    }
+                    else
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Success);
+                        ImGui.Text(OverlayLocalization.L("Installed", "Installiert"));
+                        ImGui.PopStyleColor();
+                    }
+
+                    ImGui.TableNextColumn();
+                    ImGui.AlignTextToFramePadding();
+                    if (busy)
+                    {
+                        ImGui.BeginDisabled();
+                    }
+
+                    if (!entry.IsInstalled)
+                    {
+                        if (ColoredStoreActionButton(
+                            OverlayLocalization.L("Download", "Herunterladen"),
+                            ImGuiTheme.Success,
+                            $"store_{entry.Id}"))
+                        {
+                            store.Install(entry.Id);
+                        }
+                    }
+                    else if (awaitingRestart)
+                    {
+                        ImGui.TextDisabled(OverlayLocalization.L("Restart required", "Neustart noetig"));
+                    }
+                    else
+                    {
+                        if (entry.NeedsUpdate)
+                        {
+                            if (ColoredStoreActionButton(
+                                PluginCatalogUi.UpdateButtonLabel(entry),
+                                ImGuiTheme.Accent,
+                                $"store_update_{entry.Id}"))
+                            {
+                                store.Update(entry.Id);
+                            }
+
+                            ImGui.SameLine();
+                        }
+
+                        if (ColoredStoreActionButton(
+                            OverlayLocalization.L("Remove", "Entfernen"),
+                            ImGuiTheme.Danger,
+                            $"store_remove_{entry.Id}"))
+                        {
+                            store.Remove(entry.Id);
+                        }
+                    }
+
+                    if (busy)
+                    {
+                        ImGui.EndDisabled();
+                    }
+                }
+
+                ImGui.EndTable();
+                }
+            }
+        }
+
+        private static int ComputePluginStoreStatusLineCount(PluginStoreController store)
+        {
+            var lines = store.ProgressLines.Count;
+            if (!string.IsNullOrWhiteSpace(store.StatusMessage))
+            {
+                lines++;
+            }
+
+            if (store.PendingRestartRemovals.Count > 0)
+            {
+                lines += 3;
+            }
+
+            if (store.PendingRestartUpdates.Count > 0)
+            {
+                lines += 3;
+            }
+
+            return Math.Clamp(lines, 1, PluginStoreController.MaxStatusProgressLines + 8);
+        }
+
+        private static float ComputePluginStoreStatusReserve(PluginStoreController store)
+        {
+            var progressCount = store.ProgressLines.Count;
+            var hasStatus = !string.IsNullOrWhiteSpace(store.StatusMessage);
+            var hasPending = store.PendingRestartRemovals.Count > 0 || store.PendingRestartUpdates.Count > 0;
+            if (progressCount == 0 && !hasStatus && !hasPending)
+            {
+                return ImGui.GetStyle().ItemSpacing.Y;
+            }
+
+            var lineHeight = ImGui.GetTextLineHeightWithSpacing();
+            var style = ImGui.GetStyle();
+            var height = lineHeight * ComputePluginStoreStatusLineCount(store)
+                         + style.WindowPadding.Y * 2f
+                         + style.ItemSpacing.Y;
+            if (store.NeedsRestart)
+            {
+                height += ImGui.GetFrameHeightWithSpacing() * 1.35f + style.ItemSpacing.Y;
+            }
+
+            return height + style.ItemSpacing.Y;
+        }
+
+        private static bool ColoredStoreActionButton(string label, Vector4 textColor, string id)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+            var clicked = ImGui.SmallButton($"{label}##{id}");
+            ImGui.PopStyleColor();
+            return clicked;
+        }
+
+        private static void DrawCatalogAuthorLink(PluginCatalogEntry entry)
+        {
+            var author = PluginCatalogUi.Author(entry);
+            var url = PluginCatalogUi.UpstreamUrl(entry);
+            var hasUrl = Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.TextMuted);
+            if (hasUrl)
+            {
+                if (ImGui.SmallButton($"{author}##catalog_author_{entry.Id}"))
+                {
+                    if (!ExternalLinkHelper.TryOpen(url, out var error))
+                    {
+                        PluginStoreController.Default.SetStatusMessage(
+                            OverlayLocalization.L(
+                                $"Could not open link: {error}",
+                                $"Link konnte nicht geoeffnet werden: {error}"),
+                            isError: true);
+                    }
+                }
+
+                ImGuiHelper.ToolTip(OverlayLocalization.L(
+                    $"Link to original author\n{url}",
+                    $"Link zum Original-Ersteller\n{url}"));
+            }
+            else
+            {
+                ImGui.Text(author);
+            }
+
+            ImGui.PopStyleColor();
+        }
+
+        private static void DrawCatalogLinkButton(PluginCatalogEntry entry)
+        {
+            var url = PluginCatalogUi.ForkBrowseUrl(entry);
+            var hasUrl = Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+                         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+            if (!hasUrl)
+            {
+                ImGui.BeginDisabled();
+            }
+
+            if (ImGui.SmallButton($"{OverlayLocalization.L("Open", "Öffnen")}##catalog_link_{entry.Id}"))
+            {
+                if (!ExternalLinkHelper.TryOpen(url, out var error))
+                {
+                    PluginStoreController.Default.SetStatusMessage(
+                        OverlayLocalization.L(
+                            $"Could not open link: {error}",
+                            $"Link konnte nicht geoeffnet werden: {error}"),
+                        isError: true);
+                }
+            }
+
+            if (!hasUrl)
+            {
+                ImGui.EndDisabled();
+            }
+
+            ImGuiHelper.ToolTip(OverlayLocalization.L(
+                $"Browse MordWraith fork source on GitHub\n{url}",
+                $"MordWraith-Fork-Quellcode auf GitHub ansehen\n{url}"));
+        }
+
+        private static void DrawPluginStoreStatus(PluginStoreController store)
+        {
+            var progressLines = store.ProgressLines;
+            var statusMessage = store.StatusMessage;
+            var pendingRemovals = store.PendingRestartRemovals;
+            var pendingUpdates = store.PendingRestartUpdates;
+            if (progressLines.Count == 0
+                && string.IsNullOrWhiteSpace(statusMessage)
+                && pendingRemovals.Count == 0
+                && pendingUpdates.Count == 0)
+            {
+                return;
+            }
+
+            ImGui.Spacing();
+            var lineHeight = ImGui.GetTextLineHeightWithSpacing();
+            var statusHeight = lineHeight * ComputePluginStoreStatusLineCount(store)
+                               + ImGui.GetStyle().WindowPadding.Y * 2f;
+            ImGui.BeginChild("pluginStoreStatus", new Vector2(0, statusHeight), ImGuiChildFlags.Borders);
+            foreach (var line in progressLines)
+            {
+                ImGui.TextWrapped(line);
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                var color = store.StatusIsError ? ImGuiTheme.Danger : ImGuiTheme.Success;
+                ImGui.PushStyleColor(ImGuiCol.Text, color);
+                ImGui.PushTextWrapPos(ImGui.GetCursorPos().X + ImGui.GetContentRegionAvail().X);
+                ImGui.TextWrapped(statusMessage);
+                ImGui.PopTextWrapPos();
+                ImGui.PopStyleColor();
+            }
+
+            if (pendingRemovals.Count > 0)
+            {
+                if (progressLines.Count > 0 || !string.IsNullOrWhiteSpace(statusMessage))
+                {
+                    ImGui.Spacing();
+                }
+
+                ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Accent);
+                ImGui.TextWrapped(OverlayLocalization.L("Restart required", "Neustart erforderlich"));
+                ImGui.PopStyleColor();
+
+                var pluginList = string.Join(", ", pendingRemovals);
+                ImGui.PushTextWrapPos(ImGui.GetCursorPos().X + ImGui.GetContentRegionAvail().X);
+                ImGui.TextWrapped(pendingRemovals.Count == 1
+                    ? OverlayLocalization.L(
+                        $"GameHelper must be restarted to finish removing {pluginList}.",
+                        $"GameHelper muss neu gestartet werden, um die Entfernung von {pluginList} abzuschliessen.")
+                    : OverlayLocalization.L(
+                        $"GameHelper must be restarted to finish removing these plugins: {pluginList}.",
+                        $"GameHelper muss neu gestartet werden, um die Entfernung dieser Plugins abzuschliessen: {pluginList}."));
+                ImGui.PopTextWrapPos();
+            }
+
+            if (pendingUpdates.Count > 0)
+            {
+                if (progressLines.Count > 0 || !string.IsNullOrWhiteSpace(statusMessage) || pendingRemovals.Count > 0)
+                {
+                    ImGui.Spacing();
+                }
+
+                ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.Accent);
+                ImGui.TextWrapped(OverlayLocalization.L("Restart required", "Neustart erforderlich"));
+                ImGui.PopStyleColor();
+
+                var pluginList = string.Join(", ", pendingUpdates);
+                ImGui.PushTextWrapPos(ImGui.GetCursorPos().X + ImGui.GetContentRegionAvail().X);
+                ImGui.TextWrapped(pendingUpdates.Count == 1
+                    ? OverlayLocalization.L(
+                        $"GameHelper must be restarted to apply the {pluginList} update.",
+                        $"GameHelper muss neu gestartet werden, um das {pluginList}-Update anzuwenden.")
+                    : OverlayLocalization.L(
+                        $"GameHelper must be restarted to apply these plugin updates: {pluginList}.",
+                        $"GameHelper muss neu gestartet werden, um diese Plugin-Updates anzuwenden: {pluginList}."));
+                ImGui.PopTextWrapPos();
+            }
+
+            ImGui.EndChild();
+
+            if (store.NeedsRestart)
+            {
+                ImGui.Spacing();
+                if (ImGui.Button(
+                    OverlayLocalization.L("Restart GameHelper", "GameHelper neu starten"),
+                    new Vector2(220f, ImGui.GetFrameHeightWithSpacing() * 1.35f)))
+                {
+                    if (!ApplicationRelauncher.TryRestart(out var error))
+                    {
+                        store.SetStatusMessage(
+                            OverlayLocalization.L(
+                                $"Restart failed: {error}",
+                                $"Neustart fehlgeschlagen: {error}"),
+                            isError: true);
+                    }
+                }
+            }
+        }
+
+        private static ImGuiTableFlags BuildAdaptiveTableLayout(
+            int rowCount,
+            out float tableHeight,
+            int minVisibleRows = 0,
+            float reservedBelow = 8f,
+            bool fillAvailable = false)
+        {
+            var style = ImGui.GetStyle();
+            var rowHeight = ImGui.GetFrameHeightWithSpacing();
+            var headerHeight = rowHeight + style.CellPadding.Y * 2f;
+            var availableHeight = Math.Max(ImGui.GetContentRegionAvail().Y - reservedBelow, 120f);
+            var maxRowsInAvail = Math.Max(
+                1,
+                (int)((availableHeight - headerHeight - style.CellPadding.Y) / rowHeight));
+
+            int displayRows;
+            bool needsScroll;
+            if (fillAvailable)
+            {
+                displayRows = maxRowsInAvail;
+                needsScroll = rowCount > displayRows;
+            }
+            else if (minVisibleRows > 0 && rowCount > minVisibleRows)
+            {
+                displayRows = Math.Min(minVisibleRows, maxRowsInAvail);
+                needsScroll = true;
+            }
+            else
+            {
+                var targetRows = minVisibleRows > 0 ? Math.Max(rowCount, minVisibleRows) : rowCount;
+                displayRows = Math.Min(targetRows, maxRowsInAvail);
+                needsScroll = rowCount > displayRows;
+            }
+
+            tableHeight = headerHeight + displayRows * rowHeight + style.CellPadding.Y;
+
+            var flags = ImGuiTableFlags.RowBg
+                        | ImGuiTableFlags.BordersOuter
+                        | ImGuiTableFlags.BordersInnerV
+                        | ImGuiTableFlags.Resizable;
+            if (needsScroll)
+            {
+                flags |= ImGuiTableFlags.ScrollY;
+            }
+
+            return flags;
+        }
+
         private static void SetAllPlugins(bool enabled)
         {
-            foreach (var container in PManager.Plugins)
+            foreach (var container in PManager.Plugins.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
             {
                 if (container.Metadata.AutoStart != enabled)
                 {
@@ -1080,8 +1529,6 @@ namespace GameHelper.Settings
                     ImGui.GetIO().WantCaptureMouse = true;
                     if (!isSettingsWindowVisible)
                     {
-                        isGeneralWindowVisible = false;
-                        isPluginsWindowVisible = false;
                         CoroutineHandler.RaiseEvent(GameHelperEvents.TimeToSaveAllSettings);
                     }
                 }
@@ -1113,21 +1560,18 @@ namespace GameHelper.Settings
 
                 if (!isMainMenuExpanded)
                 {
-                    isGeneralWindowVisible = false;
-                    isPluginsWindowVisible = false;
                     ImGui.End();
                     continue;
                 }
 
                 DrawManuBar();
+                DrawOptionalPluginUpdateNotice();
                 DrawHubToolbar();
-                DrawPluginTabs();
+                DrawMainHubContent();
                 mainWindowPos = ImGui.GetWindowPos();
                 mainWindowSize = ImGui.GetWindowSize();
                 ImGui.End();
 
-                DrawPluginsWindow();
-                DrawGeneralWindow();
             }
         }
 

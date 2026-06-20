@@ -8,7 +8,7 @@ Experimental keeps **Radar** and **AutoHotKeyTrigger** aligned with [Gordin/Game
 |------|--------|
 | Upstream repo | `https://github.com/Gordin/GameHelper2` |
 | Upstream branch | `main` |
-| Last full plugin sync | `618c3c5` (2026-06, Ritual/Runestone + Co-op baseline) |
+| Last full plugin sync | `e476392` (2026-06, Abyss/Breach, Runestone socket fix, co-op) |
 | Pre-cleanup snapshot tag | `pre-upstream-cleanup` → commit before Radar/AHK reset |
 
 To inspect upstream Radar/AHK history:
@@ -27,6 +27,12 @@ git clone --depth 1 https://github.com/Gordin/GameHelper2.git %TEMP%\gordin-gh2
 ## Quick sync workflow (~15–30 min)
 
 Applies when Gordin changes `Plugins/Radar/` and/or `Plugins/AutoHotKeyTrigger/` only.
+
+**Radar also needs these core files** (when syncing past `618c3c5`):
+
+- `GameHelper/RemoteObjects/Components/StateMachine.cs` — `TryGetRuneStationSocketCount`
+- `GameHelper/RemoteObjects/States/InGameStateObjects/AreaInstance.cs` — `ScanSleepingEntities`
+- `GameHelper/RemoteObjects/UiElement/ChatParentUiElement.cs` + `UiElementBase.cs` — chat-active flag (if pulled with upstream chat fix)
 
 1. **Check upstream** — read commit messages / diff for the plugin folder.
 2. **Copy** — replace plugin sources from upstream (`.cs`, `.csproj`, `.json`, `.txt`; exclude `bin/` and `obj/`).

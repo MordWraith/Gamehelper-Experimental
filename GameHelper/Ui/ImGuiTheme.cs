@@ -66,6 +66,19 @@ namespace GameHelper.Ui
             colors[(int)ImGuiCol.TabSelectedOverline] = Accent;
         }
 
+        internal static void PopPluginTabColors()
+        {
+            ImGui.PopStyleColor(4);
+        }
+
+        internal static void PushPluginTabColors()
+        {
+            ImGui.PushStyleColor(ImGuiCol.Tab, new Vector4(0.16f, 0.20f, 0.30f, 1f));
+            ImGui.PushStyleColor(ImGuiCol.TabHovered, new Vector4(0.28f, 0.38f, 0.55f, 1f));
+            ImGui.PushStyleColor(ImGuiCol.TabSelected, Accent);
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.96f, 1f, 1f));
+        }
+
         internal static void SectionHeader(string title, string? subtitle = null)
         {
             ImGui.Spacing();

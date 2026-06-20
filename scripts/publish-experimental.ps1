@@ -15,6 +15,9 @@ $ErrorActionPreference = "Stop"
 $ScriptsRoot = $PSScriptRoot
 $Root = Split-Path $ScriptsRoot -Parent
 
+# Public key in UpdateSigningPublicKey.cs must match update-signing.key before compile.
+& (Join-Path $ScriptsRoot "ensure-update-signing-key.ps1")
+
 if (-not $SkipBuild) {
     $buildArgs = @{ Configuration = $Configuration; OutputDir = $PublishDirectory }
     if (-not [string]::IsNullOrEmpty($Version)) {
@@ -38,7 +41,6 @@ $publishArgs = @{
     SkipBuild                    = $true
     SkipDownloader               = $SkipDownloader
     FullUpload                   = $FullUpload
-    SkipRepoDocSync              = $true
 }
 
 & (Join-Path $ScriptsRoot "publish.ps1") @publishArgs

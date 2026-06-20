@@ -88,17 +88,44 @@ $builtExe = Join-Path $OutDir "GameHelperDownloader.exe"
 $rootExeName = if ($ExperimentalChannel) { "GameHelperDownloader-Experimental.exe" } else { "GameHelperDownloader.exe" }
 $rootExe = Join-Path $Root $rootExeName
 
-Copy-Item $builtExe $rootExe -Force
+if (Test-Path $rootExe) {
+    try {
+        Copy-Item $builtExe $rootExe -Force -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Konnte $rootExe nicht ueberschreiben (Datei in Verwendung?). Frisch gebaut: $builtExe"
+    }
+}
+else {
+    Copy-Item $builtExe $rootExe -Force
+}
 
+$scriptsRoot = $PSScriptRoot
+if ($ExperimentalChannel) {
+    $configTemplate = Join-Path $scriptsRoot "github.config.experimental.json"
+    if (Test-Path $configTemplate) {
+        Copy-Item $configTemplate (Join-Path $OutDir "github.config.json") -Force
+        Copy-Item $configTemplate (Join-Path $Root "github.config.json") -Force
+        Write-Host "  github.config.json -> Experimental-Repo" -ForegroundColor DarkGray
+    }
+}
 
+$displayExe = if ((Test-Path $builtExe) -and (Test-Path $rootExe)) {
+    try {
+        if ((Get-Item $builtExe).LastWriteTime -gt (Get-Item $rootExe).LastWriteTime) { $builtExe } else { $rootExe }
+    }
+    catch { $builtExe }
+}
+elseif (Test-Path $builtExe) { $builtExe }
+else { $rootExe }
 
-$sizeKb = [math]::Round((Get-Item $rootExe).Length / 1KB)
+$sizeKb = [math]::Round((Get-Item $displayExe).Length / 1KB)
 
 Write-Host ""
 
 Write-Host "Fertig ($sizeKb KB):" -ForegroundColor Green
 
-Write-Host "  $rootExe"
+Write-Host "  $displayExe"
 
 Write-Host ""
 

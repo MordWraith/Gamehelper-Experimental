@@ -19,29 +19,6 @@ else {
 
 Sync-ComponentVersions -Root $Root
 
-function Remove-RunecraftHelperArtifacts {
-    param(
-        [string]$ProjectRoot,
-        [string]$DeployDir
-    )
-
-    $targets = @(
-        (Join-Path $ProjectRoot "Plugins\RunecraftHelper"),
-        (Join-Path $DeployDir "Plugins\RunecraftHelper")
-    )
-
-    foreach ($cfg in @("Debug", "Release")) {
-        $targets += Join-Path $ProjectRoot "GameHelper\bin\$cfg\net10.0-windows\win-x64\Plugins\RunecraftHelper"
-    }
-
-    foreach ($path in $targets) {
-        if (Test-Path $path) {
-            Remove-Item $path -Recurse -Force
-            Write-Host "  Entfernt: $path" -ForegroundColor DarkYellow
-        }
-    }
-}
-
 function Invoke-Robocopy {
     param([string[]]$Arguments)
 
@@ -305,13 +282,17 @@ function Test-PluginDeploy {
     param([string]$TargetPublishDir)
 
     $required = @(
+        @{ Plugin = "Atlas"; Files = @("Atlas.dll", "json\biome.json", "json\content.json") },
         @{ Plugin = "Autopot"; Files = @("AutoPot.dll") },
         @{ Plugin = "HealthBars"; Files = @("HealthBars.dll", "Textures\full_bar.png", "Textures\hollow_bar.png") },
         @{ Plugin = "Radar"; Files = @("Radar.dll", "icons.png", "important_tgt_files.txt") },
         @{ Plugin = "RitualHelper"; Files = @("RitualHelper.dll", "item_names.json") },
-        @{ Plugin = "RuneforgeHelper"; Files = @("RuneforgeHelper.dll", "config\prices.json") },
+        @{ Plugin = "RuneforgeHelper"; Files = @("RuneforgeHelper.dll", "config\prices.json", "expedition2_recipes.json") },
+        @{ Plugin = "RunecraftHelper"; Files = @("RunecraftHelper.dll", "expedition2_recipes.json") },
         @{ Plugin = "SekhemaHelper"; Files = @("SekhemaHelper.dll") },
         @{ Plugin = "AuraTracker"; Files = @("AuraTracker.dll") },
+        @{ Plugin = "FarmTracker"; Files = @("FarmTracker.dll", "custom_prices.txt", "metaArt.json") },
+        @{ Plugin = "Hiveblood"; Files = @("Hiveblood.dll") },
         @{ Plugin = "MapKillCounter"; Files = @("MapKillCounter.dll") },
         @{ Plugin = "AmanamuVoidAlert"; Files = @("AmanamuVoidAlert.dll") },
         @{ Plugin = "PlayerBuffBar"; Files = @("PlayerBuffBar.dll") },
@@ -337,21 +318,12 @@ function Repair-PluginsJson {
     }
 
     $raw = Get-Content $JsonPath -Raw
-    if ($raw -notmatch 'RunecraftHelper|Autopot') {
+    if ($raw -notmatch 'Autopot') {
         return
     }
 
     $json = $raw | ConvertFrom-Json
     $changed = $false
-
-    if ($json.PSObject.Properties.Name -contains "RunecraftHelper") {
-        $legacy = $json.RunecraftHelper
-        $json.PSObject.Properties.Remove("RunecraftHelper")
-        if ($json.PSObject.Properties.Name -notcontains "RuneforgeHelper") {
-            $json | Add-Member -NotePropertyName "RuneforgeHelper" -NotePropertyValue $legacy -Force
-        }
-        $changed = $true
-    }
 
     if ($json.PSObject.Properties.Name -contains "Autopot") {
         $legacy = $json.Autopot
@@ -374,6 +346,16 @@ function Repair-PluginsJson {
 
     if ($json.PSObject.Properties.Name -notcontains "MapKillCounter") {
         $json | Add-Member -NotePropertyName "MapKillCounter" -NotePropertyValue @{ Enable = $true; AutoStart = $true } -Force
+        $changed = $true
+    }
+
+    if ($json.PSObject.Properties.Name -notcontains "FarmTracker") {
+        $json | Add-Member -NotePropertyName "FarmTracker" -NotePropertyValue @{ Enable = $true; AutoStart = $true } -Force
+        $changed = $true
+    }
+
+    if ($json.PSObject.Properties.Name -notcontains "Hiveblood") {
+        $json | Add-Member -NotePropertyName "Hiveblood" -NotePropertyValue @{ Enable = $true; AutoStart = $true } -Force
         $changed = $true
     }
 
@@ -408,8 +390,6 @@ if (-not (Test-Path $Solution)) {
 Write-Host "=== Build ($Configuration) -> $PublishDir ===" -ForegroundColor Cyan
 Push-Location $Root
 try {
-    Write-Host "Bereinige altes RunecraftHelper..." -ForegroundColor Yellow
-    Remove-RunecraftHelperArtifacts -ProjectRoot $Root -DeployDir $PublishDir
     Repair-PluginsJson -JsonPath (Join-Path $Root "runtime-backup\configs\plugins.json")
 
     dotnet restore $Solution
@@ -433,7 +413,6 @@ try {
     Clear-DeployDirectory -TargetDir $PublishDir
     Invoke-Robocopy $outDir, $PublishDir, "/E", "/NFL", "/NDL", "/NJH", "/NJS", "/nc", "/ns", "/np"
 
-    Remove-RunecraftHelperArtifacts -ProjectRoot $Root -DeployDir $PublishDir
     Repair-PluginsJson -JsonPath (Join-Path $PublishDir "configs\plugins.json")
 
     # Zuerst frische publish-Einstellungen, sonst einmaliges runtime-backup (Setup-Migration)

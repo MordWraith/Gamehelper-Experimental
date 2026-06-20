@@ -1,1 +1,1 @@
-﻿[Radar] Hide paths when destination reached; updated default map alignment (Gordin) || [Radar] Erreichte Pfade ausblenden; neue Standard-Kartenausrichtung (Gordin)
+﻿[PlayerBuffBar 1.0.2] Up to 4 independent buff bars — each with its own watchlist, position, and icon size || [PlayerBuffBar 1.0.2] Bis zu 4 unabhängige Buff-Leisten — je eigene Watchlist, Position und Icon-Größe

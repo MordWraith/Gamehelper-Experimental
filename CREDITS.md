@@ -30,19 +30,22 @@ Open **Plugins** in the GameHelper menu (top bar). The plugin table shows each p
 
 | Plugin | Author / upstream | Notes |
 |--------|-------------------|-------|
-| Atlas | Nekkoy / [yokkenUA](https://github.com/yokkenUA/Atlas) | GameHelper2 plugin ecosystem |
+| Atlas | Nekkoy / [yokkenUA](https://github.com/yokkenUA/Atlas) (synced **v0.1.3**) | Chevron routes, hide available maps, expedition targets, universal font, content icons |
 | Radar | Gordin | GameHelper2 |
 | RitualHelper | caio | Based on AutoRitualPricer ([Queuete/GameHelper](https://github.com/Queuete/GameHelper) lineage) |
-| RuneforgeHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/RunecraftHelper) | Runeshape rewards overlay |
+| RuneforgeHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/RunecraftHelper) | Runeshape rewards overlay (fork) |
+| RunecraftHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/RunecraftHelper) | Runeshape rewards overlay (upstream 1:1) |
 | SekhemaHelper | Nekkoy / [yokkenUA](https://github.com/yokkenUA/SekhemaHelper) | Sekhema Trial option helper |
 | AutoPot | MordWraith | Written for this fork |
 | AutoHotKeyTrigger | GameHelper2 upstream | Bundled with GameHelper2 |
 | HealthBars | GameHelper2 upstream | Bundled with GameHelper2 |
-| SimpleBars | [Reynbow](https://github.com/Reynbow/simplebars) | Simpler HealthBars fork (gradient bars, circle-dot mode) |
+| SimpleBars | [Reynbow](https://github.com/Reynbow/simplebars) / [MordWraith](https://github.com/MordWraith/SimpleBars) | Simpler HealthBars fork (gradient bars, circle-dot mode) |
 | PreloadAlert | GameHelper2 upstream | Concept from [TehCheat/PreloadAlert](https://github.com/TehCheat/PreloadAlert) |
-| AuraTracker | Skrip / [derekShaheen](https://github.com/derekShaheen/AuraTracker) | Nearby enemy list with HP/ES, buffs, DPS |
-| MapKillCounter | MordWraith | Per-map monster kill counts |
-| AmanamuVoidAlert | [1k4ru5g3](https://github.com/1k4ru5g3/AmanamuVoidAlertPlugin) | Abyss / Amanamu void cloud tracker |
+| AuraTracker | Skrip / [MordWraith](https://github.com/MordWraith/AuraTracker) | Nearby enemy list with HP/ES, buffs, DPS |
+| MapKillCounter | [MordWraith](https://github.com/MordWraith/MapKillCounter) | Per-map monster kill counts |
+| FarmTracker | Senbry / [MordWraith](https://github.com/MordWraith/FarmTracker) | Farm session tracker (GameHelper2 port) |
+| Hiveblood | MordWraith | Genesis Tree Hiveblood tracker (PoE2) |
+| AmanamuVoidAlert | [1k4ru5g3](https://github.com/1k4ru5g3/AmanamuVoidAlertPlugin) / [MordWraith](https://github.com/MordWraith/AmanamuVoidAlert) | Abyss / Amanamu void cloud tracker |
 | PlayerBuffBar | MordWraith | Player buff watchlist, charges, rage |
 
 ## Third-party libraries

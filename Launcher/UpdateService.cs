@@ -10,6 +10,7 @@ namespace Launcher
     using System.Threading;
     using System.Threading.Tasks;
     using Newtonsoft.Json.Linq;
+    using Shared.PluginPackages;
     using Shared.UpdateSecurity;
 
     internal static class UpdateService
@@ -383,17 +384,26 @@ namespace Launcher
             var updateRoot = Path.Combine(Path.GetTempPath(), "GameHelperUpdate");
             var scriptPath = Path.Combine(Path.GetTempPath(), $"GameHelperUpdate-install-{pid}.bat");
 
-            var script = string.Join(
-                Environment.NewLine,
+            var scriptLines = new List<string>
+            {
                 "@echo off",
                 ":wait",
                 $"tasklist /FI \"PID eq {pid}\" 2>NUL | find \"{pid}\" >NUL",
                 "if %ERRORLEVEL%==0 (timeout /t 1 /nobreak >nul & goto wait)",
                 "timeout /t 1 /nobreak >nul",
                 $"robocopy {QuoteBatchPath(tempDir)} {QuoteBatchPath(stagedInstallDir!)} /E /COPY:DAT /R:5 /W:2 /NFL /NDL /NJH /NJS /NC /NS /NP /XF _staging.json",
-                $"start \"\" /D {QuoteBatchPath(stagedInstallDir!)} {QuoteBatchPath(launcherPath)}",
-                $"rd /s /q {QuoteBatchPath(updateRoot)}",
-                "del \"%~f0\"");
+            };
+
+            TryAppendOptionalPluginRestore(
+                stagedInstallDir!,
+                Path.Combine(updateRoot, "optional-plugins-backup"),
+                scriptLines);
+
+            scriptLines.Add($"start \"\" /D {QuoteBatchPath(stagedInstallDir!)} {QuoteBatchPath(launcherPath)}");
+            scriptLines.Add($"rd /s /q {QuoteBatchPath(updateRoot)}");
+            scriptLines.Add("del \"%~f0\"");
+
+            var script = string.Join(Environment.NewLine, scriptLines);
             File.WriteAllText(scriptPath, script);
 
             var started = Process.Start(new ProcessStartInfo
@@ -422,6 +432,68 @@ namespace Launcher
 
         private static string QuoteBatchPath(string path) =>
             $"\"{path.Replace("\"", "\"\"")}\"";
+
+        private static void TryAppendOptionalPluginRestore(
+            string installDir,
+            string backupRoot,
+            List<string> scriptLines)
+        {
+            var stagingDir = GetStagingDirectory(stagedVersion!);
+            var manifestPath = Path.Combine(stagingDir, "_staging.json");
+            if (!File.Exists(manifestPath))
+            {
+                return;
+            }
+
+            JObject manifest;
+            try
+            {
+                manifest = JObject.Parse(File.ReadAllText(manifestPath));
+            }
+            catch (Exception ex)
+            {
+                LauncherLog.Write($"Update: could not read staging manifest for optional plugin preserve: {ex.Message}");
+                return;
+            }
+
+            if (!OptionalPluginUpdatePreserver.ShouldPreserveForManifest(manifest))
+            {
+                return;
+            }
+
+            var folders = OptionalPluginUpdatePreserver.GetInstalledOptionalFolders(installDir);
+            if (folders.Count == 0)
+            {
+                return;
+            }
+
+            var backupRootFull = Path.GetFullPath(backupRoot);
+            try
+            {
+                if (Directory.Exists(backupRootFull))
+                {
+                    Directory.Delete(backupRootFull, recursive: true);
+                }
+
+                OptionalPluginUpdatePreserver.BackupOptionalPlugins(installDir, backupRootFull, folders);
+            }
+            catch (Exception ex)
+            {
+                LauncherLog.Write($"Update: optional plugin backup failed: {ex.Message}");
+                return;
+            }
+
+            LauncherLog.Write(
+                $"Update: preserving {folders.Count} optional plugin folder(s): {string.Join(", ", folders)}");
+
+            foreach (var restoreLine in OptionalPluginUpdatePreserver.BuildRestoreRobocopyCommands(
+                         backupRootFull,
+                         installDir,
+                         folders))
+            {
+                scriptLines.Add(restoreLine);
+            }
+        }
 
         private static async Task<JObject?> DownloadManifestAsync()
         {

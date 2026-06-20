@@ -13,6 +13,7 @@ namespace GameHelper
     using GameHelper.Utils;
     using ImGuiNET;
     using Plugin;
+    using GameHelper.PluginStore;
     using Settings;
     using Ui;
 
@@ -72,6 +73,7 @@ namespace GameHelper
             UniversalFont.ApplyFromSettings();
 
             PManager.InitializePlugins();
+            PluginStoreController.Default.EnsureStartupCatalog();
             return Task.CompletedTask;
         }
 
@@ -79,6 +81,9 @@ namespace GameHelper
         protected override void Render()
         {
             PerformanceProfiler.StartFrame();
+
+            try { PluginStoreController.Default.Tick(); }
+            catch (Exception ex) { Console.WriteLine($"[GameOverlay.Render.PluginStore] {ex}"); }
 
             try { CoroutineHandler.Tick(ImGui.GetIO().DeltaTime); }
             catch (Exception ex) { Console.WriteLine($"[GameOverlay.Render.Tick] {ex}"); }
