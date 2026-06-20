@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace RitualHelper
+namespace FarmTracker
 {
-    public class PoeNinjaPrice
+    public class FarmPrice
     {
         public double Price { get; set; }
         public double PriceChaos { get; set; }
@@ -45,7 +45,7 @@ namespace RitualHelper
         public Dictionary<string, string> PathBasenameToItemName { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    public static class PoeNinjaPriceFetcher
+    public static class FarmPriceFetcher
     {
         public const int SourcePoeNinja = 0;
         public const int SourcePoe2Scout = 1;
@@ -121,7 +121,7 @@ namespace RitualHelper
         private static HttpClient CreateHttpClient()
         {
             var client = new HttpClient { Timeout = TimeSpan.FromSeconds(45) };
-            client.DefaultRequestHeaders.Add("User-Agent", "RitualHelper-GameHelper-Plugin");
+            client.DefaultRequestHeaders.Add("User-Agent", "FarmTracker-GameHelper-Plugin");
             return client;
         }
 
@@ -180,6 +180,12 @@ namespace RitualHelper
             displayName = string.Empty;
             if (string.IsNullOrWhiteSpace(internalPathBasename)) return false;
 
+            if (FarmCurrencyCatalog.TryResolveItemName(internalPathBasename, out var catalogName))
+            {
+                displayName = catalogName;
+                return true;
+            }
+
             if (DefaultPathBasenames.TryGetValue(NormalizeKey(internalPathBasename), out var defaultName))
             {
                 displayName = defaultName;
@@ -230,7 +236,7 @@ namespace RitualHelper
             return flatPricesChaos.ContainsKey(key) || uniqueListingsByName.ContainsKey(key);
         }
 
-        public static double GetDivineValue(PoeNinjaPrice price)
+        public static double GetDivineValue(FarmPrice price)
         {
             if (price == null) return 0;
             if (chaosPerDivine <= 0) return 0;
@@ -245,7 +251,7 @@ namespace RitualHelper
             }
         }
 
-        public static (double Value, string Currency) GetDisplayPrice(PoeNinjaPrice price, int displayCurrency)
+        public static (double Value, string Currency) GetDisplayPrice(FarmPrice price, int displayCurrency)
         {
             if (price == null) return (0, "divine");
 
@@ -262,7 +268,7 @@ namespace RitualHelper
             return (Math.Round(div, 3), "divine");
         }
 
-        public static PoeNinjaPrice? GetPrice(
+        public static FarmPrice? GetPrice(
             string itemName,
             IReadOnlyList<string>? mods = null,
             string? internalPathBasename = null,
@@ -279,6 +285,15 @@ namespace RitualHelper
 
             lock (Gate)
             {
+                if (!string.IsNullOrWhiteSpace(internalPathBasename))
+                {
+                    var byKey = LookupByItemKeyUnlocked(internalPathBasename);
+                    if (byKey != null)
+                    {
+                        return byKey;
+                    }
+                }
+
                 foreach (var candidate in BuildNameCandidates(itemName, internalPathBasename, fullItemPath, scoutText))
                 {
                     if (!HasPriceDataForNameUnlocked(candidate))
@@ -298,6 +313,71 @@ namespace RitualHelper
 
                 return null;
             }
+        }
+
+        public static bool TryGetDivineByItemKey(string itemKey, bool useMetaArt, out double divine)
+        {
+            divine = 0;
+            if (string.IsNullOrWhiteSpace(itemKey))
+            {
+                return false;
+            }
+
+            lock (Gate)
+            {
+                var price = LookupByItemKeyUnlocked(itemKey, useMetaArt);
+                if (price == null)
+                {
+                    return false;
+                }
+
+                divine = GetDivineValue(price);
+                return divine > 0;
+            }
+        }
+
+        private static FarmPrice? LookupByItemKeyUnlocked(string itemKey, bool useMetaArt = true)
+        {
+            if (FarmCurrencyCatalog.TryGetBuiltinDivineValue(itemKey, out var builtinDiv) && builtinDiv > 0)
+            {
+                return FromChaos(builtinDiv * chaosPerDivine);
+            }
+
+            var keys = new List<string> { itemKey };
+            if (FarmCurrencyCatalog.TryResolveItemName(itemKey, out var catalogName) &&
+                !keys.Contains(catalogName, StringComparer.Ordinal))
+            {
+                keys.Add(catalogName);
+            }
+
+            if (useMetaArt)
+            {
+                var art = FarmMetaArt.PriceKey(itemKey);
+                if (!string.IsNullOrEmpty(art) && !keys.Contains(art, StringComparer.Ordinal))
+                {
+                    keys.Add(art);
+                }
+            }
+
+            foreach (var key in keys)
+            {
+                if (TryResolveDisplayNameCore(key, out var display))
+                {
+                    var byName = LookupPrice(display, null);
+                    if (byName != null)
+                    {
+                        return byName;
+                    }
+                }
+
+                flatPricesChaos.TryGetValue(NormalizeKey(key), out var chaos);
+                if (chaos > 0)
+                {
+                    return FromChaos(chaos);
+                }
+            }
+
+            return null;
         }
 
         private static List<string> BuildNameCandidates(
@@ -338,7 +418,7 @@ namespace RitualHelper
             return candidates;
         }
 
-        private static PoeNinjaPrice? LookupPrice(string itemName, IReadOnlyList<string>? mods)
+        private static FarmPrice? LookupPrice(string itemName, IReadOnlyList<string>? mods)
         {
             if (string.IsNullOrWhiteSpace(itemName)) return null;
 
@@ -358,7 +438,7 @@ namespace RitualHelper
             return null;
         }
 
-        private static PoeNinjaPrice? LookupByModsForName(string itemName, IReadOnlyList<string> mods)
+        private static FarmPrice? LookupByModsForName(string itemName, IReadOnlyList<string> mods)
         {
             if (string.IsNullOrWhiteSpace(itemName) || mods == null || mods.Count == 0) return null;
             if (!uniqueListingsByName.TryGetValue(NormalizeKey(itemName), out var listings) || listings.Count == 0)
@@ -481,11 +561,11 @@ namespace RitualHelper
             return s;
         }
 
-        private static PoeNinjaPrice? FromChaos(double chaosValue)
+        private static FarmPrice? FromChaos(double chaosValue)
         {
             if (chaosValue <= 0) return null;
 
-            var price = new PoeNinjaPrice { PriceChaos = chaosValue };
+            var price = new FarmPrice { PriceChaos = chaosValue };
 
             if (chaosPerDivine > 0 && chaosValue >= chaosPerDivine)
             {
@@ -1002,3 +1082,4 @@ namespace RitualHelper
         }
     }
 }
+

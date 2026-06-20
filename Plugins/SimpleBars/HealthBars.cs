@@ -44,7 +44,7 @@ namespace SimpleBars
 
         private readonly Dictionary<uint, Vector2> bPositions = new();
 
-        private ActiveCoroutine onAreaChange = null;
+        private ActiveCoroutine? onAreaChange;
 
         /// <inheritdoc />
         public override void DrawSettings()
@@ -192,7 +192,7 @@ namespace SimpleBars
                 return;
             }
 
-            if (Core.States.InGameStateObject.GameUi.ShouldHideWorldSpaceBars)
+            if (WorldSpaceBarVisibility.ShouldHide(Core.States.InGameStateObject.GameUi))
             {
                 return;
             }
@@ -283,7 +283,7 @@ namespace SimpleBars
             if (File.Exists(this.SettingPathname))
             {
                 var content = File.ReadAllText(this.SettingPathname);
-                this.Settings = JsonConvert.DeserializeObject<SimpleBarsSettings>(content);
+                this.Settings = JsonConvert.DeserializeObject<SimpleBarsSettings>(content) ?? new SimpleBarsSettings();
             }
 
             for (var i = 0; i < this.textureToValidate.Count; i++)
@@ -300,7 +300,11 @@ namespace SimpleBars
         /// <inheritdoc />
         public override void SaveSettings()
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(this.SettingPathname));
+            var settingsDir = Path.GetDirectoryName(this.SettingPathname);
+            if (!string.IsNullOrEmpty(settingsDir))
+            {
+                Directory.CreateDirectory(settingsDir);
+            }
             var settingsData = JsonConvert.SerializeObject(this.Settings, Formatting.Indented);
             File.WriteAllText(this.SettingPathname, settingsData);
         }
@@ -336,7 +340,7 @@ namespace SimpleBars
                 this.bPositions[entity.Id] = location;
             }
 
-            var ptr = ImGui.GetForegroundDrawList();
+            var ptr = ImGui.GetBackgroundDrawList();
             // Determine per-bar scales (self can override)
             var baseScale = (isSelf && healthbarConfig.UseIndividualBarScale) ? healthbarConfig.HealthScale : healthbarConfig.Scale;
             var baseHalf = baseScale / 2f;
@@ -359,7 +363,7 @@ namespace SimpleBars
             // Circle Dot Rendering Mode
             if (healthbarConfig.UseCircleDot)
             {
-                var dlc = ImGui.GetForegroundDrawList();
+                var dlc = ImGui.GetBackgroundDrawList();
                 float baseR = healthbarConfig.CircleRadius > 0 ? healthbarConfig.CircleRadius : MathF.Max(6f, baseScale.Y);
                 float radius = baseR * healthbarConfig.CircleScale;
                 float arcThick = MathF.Max(1f, healthbarConfig.CircleArcThickness * healthbarConfig.CircleScale);
