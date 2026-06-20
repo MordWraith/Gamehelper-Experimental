@@ -18,7 +18,9 @@ using SVector3 = System.Numerics.Vector3;
 
 namespace Wraedar;
 
-public sealed class IconRenderer(Plugin plugin) : PluginModule(plugin) {
+public sealed class IconRenderer : PluginModule {
+
+    public IconRenderer(Plugin plugin) : base(plugin) { }
 
     private SVector3 _playerPosition;
     public static readonly HashSet<string> RogueExilesByName = new HashSet<string>{
@@ -327,7 +329,7 @@ public sealed class IconRenderer(Plugin plugin) : PluginModule(plugin) {
         var iconRect = GetIconRect(entity, iconSize);
         if (iconRect == null) return;
 
-        plugin.DrawImage(plugin.IconAtlas.TextureId, iconRect.Value, plugin.IconAtlas.GetIconUVRect(iconIndex), iconColor);
+        Plugin.DrawImage(Plugin.IconAtlas.TextureId, iconRect.Value, Plugin.IconAtlas.GetIconUVRect(iconIndex), iconColor);
         if (!string.IsNullOrEmpty(label)) {
             var textSize = ImGui.CalcTextSize(label);
             SVector2 textPos = new(iconRect.Value.Left + (iconRect.Value.Width / 2), iconRect.Value.Bottom + (textSize.Y/2) - 2);

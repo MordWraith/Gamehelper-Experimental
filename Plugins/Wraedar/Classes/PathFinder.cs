@@ -164,7 +164,7 @@ public class PathFinder {
         DirectionField[target] = directionGrid;
         ExactDistanceField.TryRemove(target, out _);
     }
-    public List<DXTVector2i> FindPath(DXTVector2i start, DXTVector2i target, bool startWalkable = false) {
+    public List<DXTVector2i>? FindPath(DXTVector2i start, DXTVector2i target, bool startWalkable = false) {
         // move start to nearest walkable tile
         if (startWalkable && !IsTileWalkable(start)) {
             var nearest = FindNearestWalkable(start, 1); 

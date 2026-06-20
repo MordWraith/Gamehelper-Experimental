@@ -10,7 +10,9 @@ using SVector2 = System.Numerics.Vector2;
 
 namespace Wraedar;
 
-public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
+public sealed class SettingsUI : PluginModule {
+
+    public SettingsUI(Plugin plugin) : base(plugin) { }
 
     private int SelectedFileIndex = -1;
     private List<String> PinDirFiles = [];
@@ -23,9 +25,6 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
     private static string? _loadedFilename;
     private static string? _loadedFilePath;
     private static Dictionary<string, List<Pin>>? _loadedPins;
-    private static bool _pinDirty = false;
-
-    private static int _selectTileIndex = -1;
 
     //--| Initialise |--------------------------------------------------------------------------------------------------
     public void Initialise() {
@@ -223,7 +222,7 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
         RefreshFilesAndSelection();
         UpdateFileStatus();
 
-        DXT.Label.Draw(_fileStatusText, new() { Width = -4, Height = controlHeight, TextColor = _fileStatusColor, DrawBG = true, PadLeft = 3, Tooltip = new("Status") });
+        DXT.Label.Draw(_fileStatusText ?? string.Empty, new() { Width = -4, Height = controlHeight, TextColor = _fileStatusColor, DrawBG = true, PadLeft = 3, Tooltip = new("Status") });
 
         var menuID = $"{panelID}FileMenu";
         var newFileID = "NewPinFile";
@@ -259,6 +258,7 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
                     }
                 }},
                 new() { Label = "Save", Enabled = _loadedPins != null && !string.IsNullOrEmpty(_loadedFilePath) && !string.IsNullOrEmpty(_loadedFilename), OnClick = () => {
+                    if (string.IsNullOrEmpty(_loadedFilePath)) return;
                     File.WriteAllText(_loadedFilePath, JsonConvert.SerializeObject(_loadedPins, Formatting.Indented));
                     DXT.Log($"Pin file saved: {_loadedFilePath}", false);
                 }},
@@ -295,6 +295,7 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
         if (result is { ok: true, value: var renameBaseFilename }) {
             if (!string.IsNullOrWhiteSpace(renameBaseFilename)) {
                 DXT.Deferred.Enqueue(() => {
+                    if (string.IsNullOrEmpty(_loadedFilename)) return;
                     string uniquePath = GetUniqueFilePath(Plugin.PinPath, renameBaseFilename, ".json");
                     var oldFilePath = Path.Combine(Plugin.PinPath, _loadedFilename);
                     File.Move(oldFilePath, uniquePath);
@@ -316,6 +317,7 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
 
         ImGui.SameLine();
         if (DXT.Button.Draw($"{panelID}SaveFile", new() { Label = "Save", Width = controlWidth, Height = controlHeight, Enabled = _loadedPins != null && !string.IsNullOrEmpty(_loadedFilePath) && !string.IsNullOrEmpty(_loadedFilename), Tooltip = new("Save Pin File") })) {
+            if (string.IsNullOrEmpty(_loadedFilePath)) return;
             File.WriteAllText(_loadedFilePath, JsonConvert.SerializeObject(_loadedPins, Formatting.Indented));
             DXT.Log($"Pin file saved: {_loadedFilePath}", false);
         }
@@ -588,6 +590,7 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
                 new() { Separator = true },
                 new() { Label = "Copy Path", OnClick = () => { CopyPath(pin.Path); }},
                 new() { Label = "Paste Path", Enabled = !string.IsNullOrEmpty(_copiedPath),  OnClick = () => {
+                    if (string.IsNullOrEmpty(_copiedPath)) return;
                     UpdatePinPath(pinGroupName, pinIndex, _copiedPath);
                 }},
                 new() { Separator = true },
@@ -621,7 +624,6 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
         } else {
             pinList.Add(pin);
         }
-        _pinDirty = true;
     }
     private void SwapPin(string pinGroupName, int indexA, int indexB) {
         if (_loadedPins == null) return;
@@ -631,21 +633,18 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
         // Only swap if the Pins are actually different
         if (!ReferenceEquals(pinList[indexA], pinList[indexB])) {
             (pinList[indexA], pinList[indexB]) = (pinList[indexB], pinList[indexA]);
-            _pinDirty = true;
         }
     }
     private void RemovePin(string pinGroupName, int index) {
         if (_loadedPins == null) return;
         if (_loadedPins.TryGetValue(pinGroupName, out var pinList) && index >= 0 && index < pinList.Count) {
             pinList.RemoveAt(index);
-            _pinDirty = true;
         }
     }
     private void UpdatePin(string pinGroupName, int index, Pin newPin) {
         if (_loadedPins == null) return;
         if (_loadedPins.TryGetValue(pinGroupName, out var pinList) && index >= 0 && index < pinList.Count) {
             pinList[index] = newPin;
-            _pinDirty = true;
         }
     }
     private void UpdatePinPath(string pinGroupName, int index, string path) {
@@ -654,21 +653,18 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
         if (index < 0 || index >= pinList.Count) return;
         if (pinList[index].Path != path) {
             pinList[index].Path = path;
-            _pinDirty = true;
         }
     }
     private void AddPinGroup(string pinGroup) {
         if (_loadedPins == null) return;
         if (!_loadedPins.ContainsKey(pinGroup)) {
             _loadedPins[pinGroup] = new List<Pin>();
-            _pinDirty = true;
         }
     }
     private void RemovePinGroup(string groupName) {
         if (_loadedPins == null) return;
         if (_loadedPins.ContainsKey(groupName)) {
             _loadedPins.Remove(groupName);
-            _pinDirty = true;
         }
     }
     private bool RenamePinGroup(string? oldName, string? newName) {
@@ -679,7 +675,6 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
             var pinList = _loadedPins[oldName];
             _loadedPins.Remove(oldName);
             _loadedPins[newName] = pinList;
-            _pinDirty = true;
             return true;
         }
         return false;
@@ -689,7 +684,6 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
     private void PastePin(Pin pin) {
         if (_copiedPin != null) {
             pin.PasteFrom(_copiedPin);
-            _pinDirty = true;
         }
     }
 
@@ -765,7 +759,7 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
 
         _loadedFilename = Settings.Pin.SelectedFilename;
         _loadedFilePath = string.IsNullOrEmpty(_loadedFilename) ? "" : Path.Combine(Plugin.PinPath, _loadedFilename);
-        _loadedPins = plugin.PinRenderer.LoadedPins;
+        _loadedPins = Plugin.PinRenderer.LoadedPins;
     }
     private void LoadSelectedPinFile() {
         var fileName = Settings.Pin.SelectedFilename;
@@ -776,23 +770,23 @@ public sealed class SettingsUI(Plugin plugin) : PluginModule(plugin) {
                     string json = File.ReadAllText(filePath);
                     // If the file is empty, treat as empty dictionary
                     if (string.IsNullOrWhiteSpace(json)) {
-                        plugin.PinRenderer.LoadedPins = new Dictionary<string, List<Pin>>();
+                        Plugin.PinRenderer.LoadedPins = new Dictionary<string, List<Pin>>();
                         DXT.Log($"Loaded empty Pin file: {filePath}", false);
                     } else {
-                        plugin.PinRenderer.LoadedPins = JsonConvert.DeserializeObject<Dictionary<string, List<Pin>>>(json) ?? new Dictionary<string, List<Pin>>();
+                        Plugin.PinRenderer.LoadedPins = JsonConvert.DeserializeObject<Dictionary<string, List<Pin>>>(json) ?? new Dictionary<string, List<Pin>>();
                         DXT.Log($"Loaded Pin file: {filePath}", false);
                     }
                     return;
                 }
                 catch (Exception ex) {
-                    plugin.PinRenderer.LoadedPins = null;
+                    Plugin.PinRenderer.LoadedPins = null;
                     DXT.Log($"Failed to load Pin file '{filePath}': {ex.Message}", false);
                 }
             } else {
                 DXT.Log($"Pin file not found: {filePath}", false);
             }
         }
-        plugin.PinRenderer.LoadedPins = null;
+        Plugin.PinRenderer.LoadedPins = null;
         DXT.Log("No Pin file selected or file does not exist.", false);
     }
     private void UpdateFileStatus() {

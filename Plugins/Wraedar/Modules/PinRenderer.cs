@@ -36,8 +36,10 @@ public class PinTileMatch {
     public required List<SVector2> TilePositions { get; set; }
 }
 
-public sealed class PinRenderer(Plugin plugin) : PluginModule(plugin)
+public sealed class PinRenderer : PluginModule
 {
+    public PinRenderer(Plugin plugin) : base(plugin) { }
+
     private string _currentArea = "";
     private DateTime _lastCopyTime = DateTime.MinValue;
 
@@ -68,7 +70,7 @@ public sealed class PinRenderer(Plugin plugin) : PluginModule(plugin)
 
     // | Initialise |----------------------------------------------------------------------------------------------------
     public void Initialise() {
-        plugin.OnAreaChange += OnAreaChange;
+        Plugin.OnAreaChange += OnAreaChange;
     }
 
     // | Events |----------------------------------------------------------------------------------------------------
@@ -186,6 +188,8 @@ public sealed class PinRenderer(Plugin plugin) : PluginModule(plugin)
         int matchIndex = 0;
         var newMatches = new List<PinTileMatch>();
 
+        if (LoadedPins == null) return;
+
         foreach (var kvp in LoadedPins) {
             if (!_currentArea.Like(kvp.Key)) continue;
             foreach (var pin in kvp.Value) {
@@ -295,7 +299,6 @@ public sealed class PinRenderer(Plugin plugin) : PluginModule(plugin)
 
                 if (path.Count >= 2) {
                     var pixelPath = _pathFinder.PathGridToPoeGrid(path);
-                    float height = 0;
 
                     SColor color = entry.Pin.TextColor;
                     if (Settings.Pin.OverrideColorPaths) {
@@ -312,6 +315,7 @@ public sealed class PinRenderer(Plugin plugin) : PluginModule(plugin)
     }
 
     private void DrawPath(List<SVector2> path, SVector2 playerPos,float playerHeight, SColor color) {
+        if (_areaInstance == null) return;
 
         // Draw the first segment: from the actual player position to the second path point
         var secondPath = path[1];
@@ -389,7 +393,7 @@ public sealed class PinRenderer(Plugin plugin) : PluginModule(plugin)
 
                 // Draw circle
                 var color = walkable ? SColor.LimeGreen : SColor.Red;
-                plugin.DrawCircleFilled(screenPos, 3, color);
+                Plugin.DrawCircleFilled(screenPos, 3, color);
             }
         }
 

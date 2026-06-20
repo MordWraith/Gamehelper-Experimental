@@ -294,7 +294,12 @@ public sealed class Plugin : PCore<Settings> {
 
     //--| SaveSettings |-----------------------------------------------------------------------------------------------
     public override void SaveSettings() {
-        Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath));
+        var settingsDir = Path.GetDirectoryName(SettingsPath);
+        if (!string.IsNullOrEmpty(settingsDir))
+        {
+            Directory.CreateDirectory(settingsDir);
+        }
+
         var settingsData = JsonConvert.SerializeObject(Settings, Formatting.Indented);
         File.WriteAllText(SettingsPath, settingsData);
     }

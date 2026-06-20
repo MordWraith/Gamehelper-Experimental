@@ -58,7 +58,11 @@ public class AreaManager {
         }
         if (AreaID == newAreaID && AreaHash == newAreaHash) return false;
 
-        if (Core.States.GameCurrentState is not (GameStateTypes.InGameState or GameStateTypes.EscapeState)) return false;
+        if (Core.States is not { } states ||
+            states.GameCurrentState is not (GameStateTypes.InGameState or GameStateTypes.EscapeState))
+        {
+            return false;
+        }
 
         AreaID = newAreaID;
         AreaHash = newAreaHash;
@@ -124,6 +128,7 @@ public class AreaManager {
     }
     public Image<Rgba32>? GenerateDebugTexture() {
         if (terraintBytesPerRow <= 0) return null;
+        if (girdHeightData == null) return null;
         var configuration = Configuration.Default.Clone();
         configuration.PreferContiguousImageBuffers = true;
         var image = new Image<Rgba32>(configuration, terraintBytesPerRow * 2, TotalRows);
@@ -220,6 +225,8 @@ public class AreaManager {
 
     private int GetTileValueAt(int index, int shiftAmount)
     {
+        if (this.gridData == null) return 0;
+
         var data = this.gridData.ElementAtOrDefault(index);
         return (data >> shiftAmount) & 0xF;
     }

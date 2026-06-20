@@ -6,10 +6,12 @@ using SVector2 = System.Numerics.Vector2;
 
 namespace Wraedar;
 
-public sealed class MapRenderer(Plugin plugin) : PluginModule(plugin)
+public sealed class MapRenderer : PluginModule
 {
+    public MapRenderer(Plugin plugin) : base(plugin) { }
+
     public void Initialise() {
-        plugin.OnAreaChange += OnAreaChange;
+        Plugin.OnAreaChange += OnAreaChange;
     }
 
     public void Render() {
@@ -36,9 +38,9 @@ public sealed class MapRenderer(Plugin plugin) : PluginModule(plugin)
     private void OnAreaChange(string areaID, string areaHash) {
         if (Core.States.GameCurrentState is not (GameStateTypes.InGameState or GameStateTypes.EscapeState)) return;
 
-        if (plugin.AreaManager.GenerateMapTexture()) {
+        if (Plugin.AreaManager.GenerateMapTexture()) {
             DXT.Log($"MapRenderer: Generated map texture for area: {areaID}", false);
-            DXT.Monitor("MapRenderer", "CurrentArea.TextureSize", plugin.AreaManager.TextureSize);
+            DXT.Monitor("MapRenderer", "CurrentArea.TextureSize", Plugin.AreaManager.TextureSize);
         }
         else {
             DXT.Log($"MapRenderer: Failed to generate map texture for area: {areaID}", false);
