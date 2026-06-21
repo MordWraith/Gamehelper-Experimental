@@ -1,1 +1,2 @@
-﻿[PlayerBuffBar 1.0.2] Up to 4 independent buff bars — each with its own watchlist, position, and icon size || [PlayerBuffBar 1.0.2] Bis zu 4 unabhängige Buff-Leisten — je eigene Watchlist, Position und Icon-Größe
+﻿[FarmTracker 1.0.2] Pause map timer when game is paused (ESC) — div/h no longer drops in pause menu || [FarmTracker 1.0.2] Map-Timer bei Spielpause (ESC) pausieren — div/h sinkt im Pausemenü nicht mehr
+[PlayerBuffBar 1.0.2] Up to 4 independent buff bars — each with its own watchlist, position, and icon size || [PlayerBuffBar 1.0.2] Bis zu 4 unabhängige Buff-Leisten — je eigene Watchlist, Position und Icon-Größe

@@ -34,6 +34,8 @@ namespace FarmTracker
         private string lastProcessedZoneHash = string.Empty;
         private DateTime sessionStartUtc = DateTime.UtcNow;
         private DateTime? mapRunStartUtc;
+        private bool wasGamePaused;
+        private bool mapTimerPausedByEsc;
         private int lootScanCooldown;
         private bool areaChangePending;
         private bool inMapSubArea;
@@ -115,6 +117,7 @@ namespace FarmTracker
             }
 
             this.UpdateMapAreaState(area, areaDetails, isTownOrHideout);
+            this.UpdateMapTimerEscPause(isGamePaused);
 
             if (!isGamePaused && (!isTownOrHideout || this.Settings.CountKillsInTownOrHideout))
             {
@@ -126,9 +129,9 @@ namespace FarmTracker
                 this.ProcessInventoryDelta();
             }
 
-            if (this.ShouldDrawOverlay(isGamePaused, isTownOrHideout))
+            if (this.ShouldDrawOverlay(isTownOrHideout))
             {
-                this.DrawSlimOverlay(isTownOrHideout);
+                this.DrawSlimOverlay(isTownOrHideout, isGamePaused);
             }
         }
 
@@ -328,6 +331,8 @@ namespace FarmTracker
             this.mapRunStartUtc = null;
             this.inventoryBaseline = null;
             this.baselinePending = false;
+            this.wasGamePaused = false;
+            this.mapTimerPausedByEsc = false;
             this.lastProcessedZoneHash = string.Empty;
             this.onMapArea = false;
             this.inMapSubArea = false;
