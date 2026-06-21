@@ -122,6 +122,18 @@
                                        ]
                      },
                      {
+                         "version":  "1.0.1",
+                         "published":  "2026-06-21T19:22:02.4300846Z",
+                         "changelog":  [
+                                           "[core 1.0.1] Base and RenderItem components for item naming (RitualHelper) || [core 1.0.1] Base- und RenderItem-Komponenten für Item-Namen (RitualHelper)",
+                                           "[gameOffsets 1.0.1] Offsets for Base and RenderItem components || [gameOffsets 1.0.1] Offsets für Base- und RenderItem-Komponenten",
+                                           "[RitualHelper 1.0.1] Gordin update: poe.ninja pricing, item names via Base/RenderItem, BFS fallback, diagnose pricing || [RitualHelper 1.0.1] Gordin-Update: poe.ninja-Preise, Item-Namen via Base/RenderItem, BFS-Fallback, Preis-Diagnose",
+                                           "[RuneforgeHelper 1.0.2] Price cache v5: ninja stash icon index and ArtKeyVariants for unique art keys || [RuneforgeHelper 1.0.2] Preis-Cache v5: Ninja-Stash-Icon-Index und ArtKeyVariants für Unique-Art-Keys",
+                                           "[FarmTracker 1.0.2] Pause map timer when game is paused (ESC) — div/h no longer drops in pause menu || [FarmTracker 1.0.2] Map-Timer bei Spielpause (ESC) pausieren — div/h sinkt im Pausemenü nicht mehr",
+                                           "[FarmTracker 1.0.3] Ninja price cache v2: icon path index, cache schema version, ArtKeyVariants lookup || [FarmTracker 1.0.3] Ninja-Preis-Cache v2: Icon-Pfad-Index, Cache-Schema-Version, ArtKeyVariants-Lookup"
+                                       ]
+                     },
+                     {
                          "version":  "1.0.0",
                          "published":  "2026-06-20T12:40:05.1316419Z",
                          "changelog":  [
