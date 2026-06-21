@@ -35,6 +35,9 @@ namespace RitualHelper
 
     internal sealed class PriceCacheSnapshot
     {
+        /// <summary>Schema/semantics version. A cache written by a different version is discarded
+        /// (deleted + refetched) rather than trusted. Bump when the cache shape or how it's built changes.</summary>
+        public int CacheVersion { get; set; }
         public int PriceSource { get; set; }
         public string League { get; set; } = string.Empty;
         public DateTime LastFetchUtc { get; set; }
@@ -49,6 +52,11 @@ namespace RitualHelper
     {
         public const int SourcePoeNinja = 0;
         public const int SourcePoe2Scout = 1;
+
+        // Bump whenever the cache shape or how the art->name index is built changes, so caches written
+        // by an older plugin version are discarded instead of trusted. (v2: art index now built from
+        // both poe.ninja + poe2scout icons.)
+        private const int CacheSchemaVersion = 2;
 
         private static readonly string[] ScoutCurrencyCategories =
         {
@@ -539,13 +547,14 @@ namespace RitualHelper
                     exChaos = rates.ExChaos;
 
                     // Scout unique prices are often too low; merge poe.ninja stash uniques as a floor/ceiling check.
-                    var ninjaStashRates = await FetchNinjaStashOverviewsAsync(flat, divChaos, exChaos).ConfigureAwait(false);
+                    // pathNames is shared so the art->name index is built from BOTH sources (union).
+                    var ninjaStashRates = await FetchNinjaStashOverviewsAsync(flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
                     divChaos = ninjaStashRates.DivChaos;
                     exChaos = ninjaStashRates.ExChaos;
                 }
                 else
                 {
-                    var rates = await FetchFromNinjaAsync(flat, divChaos, exChaos).ConfigureAwait(false);
+                    var rates = await FetchFromNinjaAsync(flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
                     divChaos = rates.DivChaos;
                     exChaos = rates.ExChaos;
                 }
@@ -796,23 +805,24 @@ namespace RitualHelper
                 add($"{listing.Name} {listing.BaseType}");
         }
 
-        private static async Task<RatePair> FetchFromNinjaAsync(Dictionary<string, double> flat, double divChaos, double exChaos)
+        private static async Task<RatePair> FetchFromNinjaAsync(Dictionary<string, double> flat, Dictionary<string, string> pathNames, double divChaos, double exChaos)
         {
             var leagueParam = Uri.EscapeDataString(configuredLeague).Replace("%20", "+");
 
             foreach (var type in NinjaExchangeTypes)
             {
                 var url = $"https://poe.ninja/poe2/api/economy/exchange/current/overview?league={leagueParam}&type={type}";
-                var rates = await FetchNinjaExchangeApi(url, flat, divChaos, exChaos).ConfigureAwait(false);
+                var rates = await FetchNinjaExchangeApi(url, flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
                 divChaos = rates.DivChaos;
                 exChaos = rates.ExChaos;
             }
 
-            return await FetchNinjaStashOverviewsAsync(flat, divChaos, exChaos).ConfigureAwait(false);
+            return await FetchNinjaStashOverviewsAsync(flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
         }
 
         private static async Task<RatePair> FetchNinjaStashOverviewsAsync(
             Dictionary<string, double> flat,
+            Dictionary<string, string> pathNames,
             double divChaos,
             double exChaos)
         {
@@ -821,13 +831,13 @@ namespace RitualHelper
             foreach (var type in NinjaStashTypes)
             {
                 var url = $"https://poe.ninja/poe2/api/economy/stash/current/item/overview?league={leagueParam}&type={type}";
-                exChaos = await FetchNinjaStashApi(url, flat, divChaos, exChaos).ConfigureAwait(false);
+                exChaos = await FetchNinjaStashApi(url, flat, pathNames, divChaos, exChaos).ConfigureAwait(false);
             }
 
             return new RatePair(divChaos, exChaos);
         }
 
-        private static async Task<RatePair> FetchNinjaExchangeApi(string url, Dictionary<string, double> flat, double divChaos, double exChaos)
+        private static async Task<RatePair> FetchNinjaExchangeApi(string url, Dictionary<string, double> flat, Dictionary<string, string> pathNames, double divChaos, double exChaos)
         {
             try
             {
@@ -843,13 +853,17 @@ namespace RitualHelper
                 }
 
                 var idToName = new Dictionary<string, string>();
+                var idToIcon = new Dictionary<string, string>();
                 if (data["items"] is JArray itemsArray)
                 {
                     foreach (var item in itemsArray)
                     {
                         var id = item["id"]?.ToString();
+                        if (id == null) continue;
                         var name = item["name"]?.ToString();
-                        if (id != null && name != null) idToName[id] = name;
+                        if (name != null) idToName[id] = name;
+                        var icon = item["image"]?.ToString() ?? item["icon"]?.ToString();
+                        if (!string.IsNullOrEmpty(icon)) idToIcon[id] = icon;
                     }
                 }
 
@@ -865,6 +879,8 @@ namespace RitualHelper
 
                         var chaos = PrimaryValueToChaos(pval, primaryCurrency, divChaos, exChaos);
                         AddFlatPrice(flat, name, chaos);
+                        if (idToIcon.TryGetValue(id, out var iconUrl))
+                            IndexPathName(pathNames, ExtractIconBasename(iconUrl), name);
 
                         if (name.Contains("Divine", StringComparison.OrdinalIgnoreCase))
                             divChaos = chaos;
@@ -878,7 +894,7 @@ namespace RitualHelper
             return new RatePair(divChaos, exChaos);
         }
 
-        private static async Task<double> FetchNinjaStashApi(string url, Dictionary<string, double> flat, double divChaos, double exChaos)
+        private static async Task<double> FetchNinjaStashApi(string url, Dictionary<string, double> flat, Dictionary<string, string> pathNames, double divChaos, double exChaos)
         {
             try
             {
@@ -905,6 +921,8 @@ namespace RitualHelper
                         var chaos = PrimaryValueToChaos(pval, primaryCurrency, divChaos, exChaos);
                         var cacheKey = BuildStashCacheKey(name, baseType);
                         AddFlatPrice(flat, cacheKey, chaos);
+                        var icon = line["icon"]?.ToString() ?? line["image"]?.ToString();
+                        IndexPathName(pathNames, ExtractIconBasename(icon), name);
                     }
                 }
             }
@@ -945,7 +963,17 @@ namespace RitualHelper
             try
             {
                 var snapshot = JsonConvert.DeserializeObject<PriceCacheSnapshot>(File.ReadAllText(cacheFilePath));
-                if (snapshot?.FlatPricesChaos == null) return false;
+
+                // Written by a different (older) plugin version, or missing required data: discard it
+                // entirely so we never trust a stale-schema cache. A fresh fetch rebuilds it.
+                if (snapshot == null || snapshot.CacheVersion != CacheSchemaVersion || snapshot.FlatPricesChaos == null)
+                {
+                    DeleteCacheFromDisk();
+                    return false;
+                }
+
+                // Valid cache, but for a different source/league than currently selected — leave the file
+                // (the next fetch overwrites it) and just fall through to refetch.
                 if (snapshot.PriceSource != configuredSource) return false;
                 if (!string.Equals(snapshot.League, configuredLeague, StringComparison.OrdinalIgnoreCase)) return false;
 
@@ -970,8 +998,23 @@ namespace RitualHelper
             }
             catch
             {
+                // Corrupt / unreadable / incompatible cache from an older version: remove it so it can't
+                // keep failing, and fall back to a fresh fetch.
+                DeleteCacheFromDisk();
                 return false;
             }
+        }
+
+        private static void DeleteCacheFromDisk()
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(cacheFilePath) && File.Exists(cacheFilePath))
+                {
+                    File.Delete(cacheFilePath);
+                }
+            }
+            catch { }
         }
 
         private static void SaveCacheToDisk()
@@ -985,6 +1028,7 @@ namespace RitualHelper
                 {
                     snapshot = new PriceCacheSnapshot
                     {
+                        CacheVersion = CacheSchemaVersion,
                         PriceSource = configuredSource,
                         League = configuredLeague,
                         LastFetchUtc = lastFetchTime,

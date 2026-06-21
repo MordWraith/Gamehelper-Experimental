@@ -1,17 +1,17 @@
 ﻿{
     "schema":  2,
     "versionScheme":  2,
-    "legacyMonolithVersion":  "1.3.2",
+    "legacyMonolithVersion":  "1.3.13",
     "components":  {
                        "core":  {
-                                    "version":  "1.0.0",
+                                    "version":  "1.0.1",
                                     "displayName":  "GameHelper core",
                                     "projects":  [
                                                      "GameHelper/GameHelper.csproj"
                                                  ]
                                 },
                        "gameOffsets":  {
-                                           "version":  "1.0.0",
+                                           "version":  "1.0.1",
                                            "displayName":  "GameOffsets",
                                            "projects":  [
                                                             "GameOffsets/GameOffsets.csproj"
@@ -82,7 +82,7 @@
                                            "core":  false
                                        },
                     "FarmTracker":  {
-                                        "version":  "1.0.1",
+                                        "version":  "1.0.3",
                                         "folder":  "FarmTracker",
                                         "project":  "Plugins/FarmTracker/FarmTracker.csproj",
                                         "core":  false
@@ -100,13 +100,13 @@
                                           "core":  false
                                       },
                     "RitualHelper":  {
-                                         "version":  "1.0.0",
+                                         "version":  "1.0.1",
                                          "folder":  "RitualHelper",
                                          "project":  "Plugins/RitualHelper/RitualHelper.csproj",
                                          "core":  false
                                      },
                     "RuneforgeHelper":  {
-                                            "version":  "1.0.1",
+                                            "version":  "1.0.2",
                                             "folder":  "RuneforgeHelper",
                                             "project":  "Plugins/RuneforgeHelper/RuneforgeHelper.csproj",
                                             "core":  false
