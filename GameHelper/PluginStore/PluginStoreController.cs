@@ -43,6 +43,8 @@ namespace GameHelper.PluginStore
         private bool startupCatalogEnsured;
         private readonly HashSet<string> pendingRestartRemovals = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> pendingRestartUpdates = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Queue<string> updateAllQueue = new();
+        private int updateAllBatchTotal;
 
         private PluginStoreController()
         {
@@ -240,6 +242,12 @@ namespace GameHelper.PluginStore
                 {
                     this.pendingRestartUpdates.Add(completedPluginId);
                 }
+
+                this.TryContinueUpdateAllBatch(result);
+            }
+            else if (!result.Success && completedAction is PluginStoreAction.Update)
+            {
+                this.ClearUpdateAllBatch();
             }
 
             if (result.Success &&
@@ -317,14 +325,63 @@ namespace GameHelper.PluginStore
                 return;
             }
 
-            if (!this.TryPreparePluginForFileChange(pluginId, out var error))
+            this.ClearUpdateAllBatch();
+            if (!this.TryStartUpdate(pluginId, out var error))
             {
                 this.SetStatus(error, isError: true);
+            }
+        }
+
+        internal void UpdateAll()
+        {
+            if (this.IsBusy)
+            {
+                this.SetStatus(
+                    OverlayLocalization.L(
+                        "Another plugin operation is still running.",
+                        "Eine andere Plugin-Operation laeuft noch."),
+                    isError: true);
                 return;
             }
 
-            this.StartTask(PluginStoreAction.Update, pluginId, token =>
-                this.manager.InstallPluginAsync(this.GetInstallDir(), pluginId, this.CreateProgress(), token));
+            var ids = this.GetInstalledPluginsNeedingUpdate();
+            if (ids.Count == 0)
+            {
+                this.SetStatus(
+                    OverlayLocalization.L(
+                        "All optional plugins are up to date.",
+                        "Alle optionalen Plugins sind aktuell."),
+                    isError: false);
+                return;
+            }
+
+            lock (this.sync)
+            {
+                this.updateAllQueue.Clear();
+                foreach (var id in ids)
+                {
+                    this.updateAllQueue.Enqueue(id);
+                }
+
+                this.updateAllBatchTotal = ids.Count;
+            }
+
+            if (!this.TryStartNextQueuedUpdate(out var error))
+            {
+                this.ClearUpdateAllBatch();
+                this.SetStatus(error, isError: true);
+            }
+        }
+
+        internal bool IsUpdateAllRunning
+        {
+            get
+            {
+                lock (this.sync)
+                {
+                    return this.updateAllBatchTotal > 0;
+                }
+            }
         }
 
         private void ProcessPendingPluginQueue()
@@ -357,6 +414,101 @@ namespace GameHelper.PluginStore
                         this.statusIsError = false;
                     }
                 }
+            }
+        }
+
+        private bool TryStartUpdate(string pluginId, out string error)
+        {
+            if (!this.TryPreparePluginForFileChange(pluginId, out error))
+            {
+                return false;
+            }
+
+            this.StartTask(PluginStoreAction.Update, pluginId, token =>
+                this.manager.InstallPluginAsync(this.GetInstallDir(), pluginId, this.CreateProgress(), token));
+            return true;
+        }
+
+        private bool TryStartNextQueuedUpdate(out string error)
+        {
+            string? pluginId;
+            int batchTotal;
+            int remaining;
+            lock (this.sync)
+            {
+                if (this.updateAllQueue.Count == 0)
+                {
+                    error = string.Empty;
+                    return false;
+                }
+
+                pluginId = this.updateAllQueue.Dequeue();
+                batchTotal = this.updateAllBatchTotal;
+                remaining = this.updateAllQueue.Count;
+            }
+
+            if (batchTotal > 1)
+            {
+                var index = batchTotal - remaining;
+                this.SetStatus(
+                    OverlayLocalization.L(
+                        $"Updating {pluginId} ({index}/{batchTotal})...",
+                        $"Aktualisiere {pluginId} ({index}/{batchTotal})..."),
+                    isError: false);
+            }
+
+            return this.TryStartUpdate(pluginId, out error);
+        }
+
+        private void TryContinueUpdateAllBatch(PluginPackageResult result)
+        {
+            bool hasMore;
+            int batchTotal;
+            lock (this.sync)
+            {
+                hasMore = this.updateAllQueue.Count > 0;
+                batchTotal = this.updateAllBatchTotal;
+            }
+
+            if (hasMore)
+            {
+                if (!this.TryStartNextQueuedUpdate(out var error))
+                {
+                    this.ClearUpdateAllBatch();
+                    this.SetStatus(error, isError: true);
+                }
+
+                return;
+            }
+
+            if (batchTotal <= 1)
+            {
+                lock (this.sync)
+                {
+                    this.updateAllBatchTotal = 0;
+                }
+
+                return;
+            }
+
+            lock (this.sync)
+            {
+                this.updateAllBatchTotal = 0;
+            }
+
+            this.SetStatus(
+                OverlayLocalization.L(
+                    $"Scheduled updates for {batchTotal} plugins. Restart GameHelper to apply.",
+                    $"Updates fuer {batchTotal} Plugins geplant. GameHelper neu starten zum Anwenden."),
+                isError: false);
+        }
+
+        private void ClearUpdateAllBatch()
+        {
+            lock (this.sync)
+            {
+                this.updateAllQueue.Clear();
+                this.updateAllBatchTotal = 0;
             }
         }
 

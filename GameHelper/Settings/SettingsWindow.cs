@@ -457,6 +457,26 @@ namespace GameHelper.Settings
                 store.RefreshCatalog();
             }
 
+            var updatesAvailable = store.GetInstalledPluginsNeedingUpdate().Count;
+            ImGui.SameLine();
+            if (updatesAvailable == 0)
+            {
+                ImGui.BeginDisabled();
+            }
+
+            var updateAllLabel = OverlayLocalization.L(
+                $"Update all ({updatesAvailable})",
+                $"Alle aktualisieren ({updatesAvailable})");
+            if (ImGui.SmallButton(updateAllLabel))
+            {
+                store.UpdateAll();
+            }
+
+            if (updatesAvailable == 0)
+            {
+                ImGui.EndDisabled();
+            }
+
             if (busy)
             {
                 ImGui.EndDisabled();
